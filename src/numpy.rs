@@ -1,7 +1,19 @@
 pub mod matrix_arithmetic {
-    pub fn create_matrix(n: usize, m: usize) -> Vec<Vec<f64>> {
-        //creates a nxm matrix
-        vec![vec![0.0; m]; n]
+    use rand::prelude::*;
+
+    //creates a nxm matrix with random entries
+    pub fn create_matrix(n: usize, m: usize, weight_matrix_or_bias_matrix: bool) -> Vec<Vec<f64>> {
+        let mut rng = rand::rng();
+        if !weight_matrix_or_bias_matrix{
+            return (0..n).map(|_| {
+            (0..m).map(|_| rng.random_range(-100.0..=100.0))
+            .collect()
+        }).collect();
+        }
+        (0..n).map(|_| {
+            (0..m).map(|_| rng.random_range(-1.0..=1.0))
+            .collect()
+        }).collect()
     }
 
     pub fn matrix_multiplication(
