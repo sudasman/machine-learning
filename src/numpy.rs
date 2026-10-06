@@ -1,7 +1,6 @@
-//creates a nxm matrix
-
 pub mod matrix_arithmetic {
     pub fn create_matrix(n: usize, m: usize) -> Vec<Vec<f64>> {
+        //creates a nxm matrix
         vec![vec![0.0; m]; n]
     }
 
@@ -35,6 +34,33 @@ pub mod matrix_arithmetic {
             for j in 0..matrix1[0].len() {
                 matrix[i][j] = matrix1[i][j] + matrix2[i][j];
             }
+        }
+        matrix
+    }
+}
+
+pub mod functions {
+    //for scope reasons
+    use std::f64::consts::E as e;
+
+    //Use Case: Binary Classification (Yes/No)
+    pub fn sigmoid(z: f64) -> f64 {
+        let base: f64 = e;
+        1.0 / (1.0 + base.powf(-z))
+    }
+
+    //Use Case: Multi Class Classification (Number Recognition)
+    pub fn softmax(weighted_sum_matrix: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        let mut matrix = vec![vec![0.0; weighted_sum_matrix[0].len()]; weighted_sum_matrix.len()];
+
+        let mut denominator_sum: f64 = 0.0;
+
+        for i in 0..weighted_sum_matrix.len() {
+            denominator_sum += weighted_sum_matrix[i][0].exp()
+        }
+
+        for i in 0..weighted_sum_matrix.len() {
+            matrix[i][0] = weighted_sum_matrix[i][0].exp() / denominator_sum;
         }
         matrix
     }

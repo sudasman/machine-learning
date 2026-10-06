@@ -1,7 +1,6 @@
-use std::f64::consts::E as e;
 mod numpy;
+use numpy::functions as function;
 use numpy::matrix_arithmetic as array;
-
 struct Layer {
     neurons: usize,
     input_matrix: Vec<Vec<f64>>,
@@ -60,12 +59,7 @@ fn apply_activation_function(weighted_sum_matrix: Vec<Vec<f64>>) -> Vec<Vec<f64>
         vec![vec![0.0; weighted_sum_matrix[0].len()]; weighted_sum_matrix.len()];
     //dimension of weighted sum matrix is always nx1
     for i in 0..weighted_sum_matrix.len() {
-        matrix[i][0] = sigmoid(weighted_sum_matrix[i][0]);
+        matrix[i][0] = function::sigmoid(weighted_sum_matrix[i][0]);
     }
     matrix
-}
-
-fn sigmoid(z: f64) -> f64 {
-    let base: f64 = e;
-    1.0 / (1.0 + base.powf(-z))
 }
