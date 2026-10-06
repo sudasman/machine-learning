@@ -3,7 +3,7 @@ pub fn create_matrix(n :usize, m: usize) -> Vec<Vec<f64>>{
     vec![vec![0.0; m]; n]
 }
 
-pub fn matrix_multiplication(matrix1: Vec<Vec<f64>>, matrix2: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+pub fn matrix_multiplication(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
     //linear algebra 101 
     assert_eq!(matrix1[0].len(), matrix2.len());
 
@@ -18,7 +18,7 @@ pub fn matrix_multiplication(matrix1: Vec<Vec<f64>>, matrix2: Vec<Vec<f64>>) -> 
     matrix
 }
 
-pub fn matrix_addition(matrix1: Vec<Vec<f64>>, matrix2: Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+pub fn matrix_addition(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
     assert_eq!((matrix1.len(), matrix1[0].len()), (matrix2.len(), matrix2[0].len()));
 
     //either matrix1 or matrix2 works here
