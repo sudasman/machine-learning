@@ -9,8 +9,6 @@ fn main() {
     //input_matrix.len() + 1 == number_of_neurons
     let mut weight_matrix: Vec<Vec<f64>> = np::create_matrix(input_matrix.len() + 1, input_matrix.len());
     let mut bias_matrix: Vec<Vec<f64>> = np::create_matrix(input_matrix.len() + 1, 1);
-
-    dbg!(np::matrix_multiplication(weight_matrix, input_matrix));
 }
 
 
