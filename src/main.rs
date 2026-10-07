@@ -40,23 +40,35 @@ fn main() {
     let number_of_neurons_hidden_layer = vec![8];
     let number_of_hidden_layers = 1;
 
-    dbg!(train_model(data.0, model, number_of_neurons_hidden_layer, number_of_hidden_layers));
+    dbg!(train_model(
+        data.0,
+        model,
+        number_of_neurons_hidden_layer,
+        number_of_hidden_layers
+    ));
 }
 
-fn train_model(training_data: Vec<Vec<Vec<f64>>>, mut model: Vec<Layer>, number_of_neurons_hidden_layer: Vec<usize>, number_of_hidden_layers: usize ) -> f64 {
-    for i in 0..training_data.len(){
-        let input_layer: Layer = Layer::new(training_data[i].clone(), training_data[i].len());
-        
-        model = init_model(
-            number_of_neurons_hidden_layer.clone(),
-            input_layer,
-            number_of_hidden_layers,
-        );
-    }
+fn train_model(
+    training_data: Vec<Vec<Vec<f64>>>,
+    mut model: Vec<Layer>,
+    number_of_neurons_hidden_layer: Vec<usize>,
+    number_of_hidden_layers: usize,
+) -> f64 {
+    let input_layer: Layer = Layer::new(training_data[0].clone(), training_data[0].len());
+    model = init_model(
+        number_of_neurons_hidden_layer.clone(),
+        input_layer,
+        number_of_hidden_layers,
+    );
+    for i in 0..training_data.len() {}
     0.0
 }
 
-fn init_model(number_of_neurons_hidden_layer: Vec<usize>, input_layer: Layer, number_of_hidden_layers: usize, ) -> Vec<Layer> {
+fn init_model(
+    number_of_neurons_hidden_layer: Vec<usize>,
+    input_layer: Layer,
+    number_of_hidden_layers: usize,
+) -> Vec<Layer> {
     let mut model = init_hidden_layer(
         number_of_neurons_hidden_layer,
         input_layer,
