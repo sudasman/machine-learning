@@ -1,6 +1,31 @@
-use crate::Layer;
 use crate::numpy::functions as function;
 use crate::numpy::matrix_arithmetic as array;
+
+#[derive(Debug)]
+pub struct Layer {
+    pub neurons: usize,
+    pub input_matrix: Vec<Vec<f64>>,
+    pub weight_matrix: Vec<Vec<f64>>,
+    pub bias_matrix: Vec<Vec<f64>>,
+    pub weighted_sum_matrix: Vec<Vec<f64>>,
+}
+
+impl Layer {
+    pub fn new(input_matrix: Vec<Vec<f64>>, neurons: usize) -> Self {
+        let weight_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, input_matrix.len(), true);
+        let bias_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, 1, true);
+        let weighted_sum_matrix = weighted_sum_matrix(&input_matrix, &weight_matrix, &bias_matrix);
+
+        Layer {
+            neurons,
+            input_matrix,
+            weight_matrix,
+            bias_matrix,
+            weighted_sum_matrix,
+        }
+    }
+}
+
 
 pub fn init_input_layer(training_data: &Vec<Vec<f64>>) -> Layer {
     Layer::new(training_data.clone(), training_data[0].len())
