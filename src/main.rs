@@ -39,14 +39,10 @@ fn main() {
         data.0[0].clone(),
         input_layer_neurons,
     );
-    layers.push(input_layer);
 
-    let hidden_layer1_neurons: usize = 8;
-    let hidden_layer1: Layer = Layer::new(
-        apply_activation_function(layers[layers.len() - 1].weighted_sum_matrix.clone()),
-        hidden_layer1_neurons,
-    );
-    layers.push(hidden_layer1);
+    let number_of_neurons_hidden_layer = vec![8];
+    let number_of_hidden_layers = 1;
+    layers = init_hidden_layer(number_of_neurons_hidden_layer, input_layer, number_of_hidden_layers);
 
     let output_layer: Layer = Layer::new(
         apply_activation_function(layers[layers.len() - 1].weighted_sum_matrix.clone()),
@@ -58,6 +54,21 @@ fn main() {
     dbg!(function::MSE(&layers[2].weighted_sum_matrix.clone(), &data.1));
 }
 
+fn init_hidden_layer(neurons: Vec<usize>, input_layer: Layer, number_of_hidden_layers: usize) -> Vec<Layer>{
+    let mut layers: Vec<Layer> = Vec::new();
+
+    layers.push(input_layer);
+
+    for i in 0..number_of_hidden_layers{
+        let hidden_layer: Layer = Layer::new(
+            apply_activation_function(layers[layers.len() - 1].weighted_sum_matrix.clone()),
+            neurons[i],
+        );
+
+        layers.push(hidden_layer);
+    }
+    layers
+}
 fn weighted_sum_matrix(
     input_matrix: &Vec<Vec<f64>>,
     weight_matrix: &Vec<Vec<f64>>,
