@@ -1,6 +1,7 @@
-mod housing_price_dataset;
 mod numpy;
-use housing_price_dataset::generate_training_dataset as generate;
+#[path = "../datasets/housing_price_dataset.rs"]
+mod housing_price_dataset;
+use crate::housing_price_dataset::{generate_training_dataset as generate_housing, unscale_price as price};
 use numpy::functions as function;
 use numpy::matrix_arithmetic as array;
 
@@ -31,10 +32,11 @@ impl Layer {
 
 fn main() {
     let mut layers: Vec<Layer> = vec![];
-
+    let data: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) = generate_housing(5);
     let input_layer_neurons: usize = 10;
+    //array::create_matrix(input_layer_neurons - 1, 1, false)
     let input_layer: Layer = Layer::new(
-        array::create_matrix(input_layer_neurons - 1, 1, false),
+        data.0[0].clone(),
         input_layer_neurons,
     );
     layers.push(input_layer);
@@ -46,7 +48,14 @@ fn main() {
     );
     layers.push(hidden_layer1);
 
-    dbg!(generate(4));
+    let output_layer: Layer = Layer::new(
+        apply_activation_function(layers[layers.len() - 1].weighted_sum_matrix.clone()),
+        1,
+    );
+    layers.push(output_layer);
+
+    dbg!(layers[2].weighted_sum_matrix.clone());
+    dbg!(function::MSE(&layers[2].weighted_sum_matrix.clone(), &data.1));
 }
 
 fn weighted_sum_matrix(
