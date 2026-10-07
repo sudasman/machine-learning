@@ -1,6 +1,10 @@
+mod housing_price_dataset;
 mod numpy;
+use housing_price_dataset::generate_training_dataset as generate;
 use numpy::functions as function;
 use numpy::matrix_arithmetic as array;
+
+#[derive(Debug)]
 struct Layer {
     neurons: usize,
     input_matrix: Vec<Vec<f64>>,
@@ -11,8 +15,8 @@ struct Layer {
 
 impl Layer {
     fn new(input_matrix: Vec<Vec<f64>>, neurons: usize) -> Self {
-        let weight_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, input_matrix.len());
-        let bias_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, 1);
+        let weight_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, input_matrix.len(), true);
+        let bias_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, 1, true);
         let weighted_sum_matrix = weighted_sum_matrix(&input_matrix, &weight_matrix, &bias_matrix);
 
         Layer {
@@ -30,7 +34,7 @@ fn main() {
 
     let input_layer_neurons: usize = 10;
     let input_layer: Layer = Layer::new(
-        array::create_matrix(input_layer_neurons - 1, 1),
+        array::create_matrix(input_layer_neurons - 1, 1, false),
         input_layer_neurons,
     );
     layers.push(input_layer);
@@ -41,6 +45,8 @@ fn main() {
         hidden_layer1_neurons,
     );
     layers.push(hidden_layer1);
+
+    dbg!(generate(4));
 }
 
 fn weighted_sum_matrix(
