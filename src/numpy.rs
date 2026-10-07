@@ -52,7 +52,7 @@ pub mod matrix_arithmetic {
 pub mod functions {
     //for scope reasons
     use std::f64::consts::E as e;
-
+    use crate::housing_price_dataset::scale_price;
     //Use Case: Binary Classification (Yes/No)
     pub fn sigmoid(z: f64) -> f64 {
         let base: f64 = e;
@@ -73,5 +73,19 @@ pub mod functions {
             matrix[i][0] = weighted_sum_matrix[i][0].exp() / denominator_sum;
         }
         matrix
+    }
+
+    pub fn MSE(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64{
+        let mut sum: f64 = 0.0;
+
+        for i in 0..prediction.len() {
+            let scale_actual_value: f64 = scale_price(&actual_value[i][0], 219000.0, 935000.0);
+            let error: f64 = scale_actual_value  - prediction[i][0];
+            let squared_error = error.powf(2.0);
+            sum+=squared_error;
+        }
+
+        //219000.0, 935000.0
+        (1.0/prediction.len() as f64) * sum
     }
 }

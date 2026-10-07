@@ -20,3 +20,11 @@ pub fn generate_training_dataset(amount: usize) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<
     }
     (training, actual_value)
 }
+
+pub fn unscale_price(scaled_price: &f64, min_price: f64, max_price: f64) -> f64 {
+    scaled_price * (max_price - min_price) + min_price
+}
+
+pub fn scale_price(price: &f64, min_price: f64, max_price: f64) -> f64 {
+    (price - min_price) / (max_price - min_price)
+}
