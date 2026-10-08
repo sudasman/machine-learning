@@ -5,7 +5,7 @@ mod numpy;
 use crate::housing_price_dataset::{
     generate_training_dataset as generate_housing, unscale_price as price,
 };
-use ml::Layer as Layer;
+use ml::Layer;
 use numpy::functions as function;
 use numpy::matrix_arithmetic as array;
 
@@ -28,3 +28,5 @@ fn main() {
         &number_of_hidden_layers
     ));
 }
+
+//JUNCTION LAST YEAR BUSINESS CASE EXAM

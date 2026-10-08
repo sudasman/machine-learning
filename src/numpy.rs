@@ -51,11 +51,59 @@ pub mod matrix_arithmetic {
         }
         matrix
     }
+
+    pub fn matrix_subtraction(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        assert_eq!(
+            (matrix1.len(), matrix1[0].len()),
+            (matrix2.len(), matrix2[0].len())
+        );
+
+        let mut matrix: Vec<Vec<f64>> = vec![vec![0.0; matrix1[0].len()]; matrix1.len()];
+        for i in 0..matrix1.len() {
+            for j in 0..matrix1[0].len() {
+                matrix[i][j] = matrix1[i][j] - matrix2[i][j];
+            }
+        }
+
+        matrix
+    }
+    pub fn transpose(matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        let mut transposed_matrix: Vec<Vec<f64>> = vec![vec![0.0; matrix[0].len()]; matrix.len()];
+
+        for i in 0..matrix.len() {
+            for j in 0..matrix[0].len() {
+                transposed_matrix[j][i] = matrix[i][j];
+            }
+        }
+        transposed_matrix
+    }
+
+    pub fn sum_columns(matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        let mut result = vec![vec![0.0]; matrix.len()];
+
+        for i in 0..matrix.len() {
+            for j in 0..matrix[i].len() {
+                result[i][0] += matrix[i][j];
+            }
+        }
+
+        result
+    }
+
+    pub fn scalar_multiplication(scalar: &f64, matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        matrix
+            .iter()
+            .map(|i| i.iter().map(|j| scalar * j).collect())
+            .collect()
+    }
 }
 
 pub mod functions {
     //for scope reasons
+    use super::matrix_arithmetic::*;
     use crate::housing_price_dataset::scale_price;
+    use rand::*;
+    use rand::seq::SliceRandom;
     use std::f64::consts::E as e;
     //Use Case: Binary Classification (Yes/No)
     pub fn sigmoid(z: f64) -> f64 {
@@ -91,5 +139,82 @@ pub mod functions {
 
         //219000.0, 935000.0
         (1.0 / prediction.len() as f64) * sum
+    }
+
+    pub fn stochastic_gradient_descent(
+        bias_matrix: Vec<Vec<f64>>,
+        weight_matrix: Vec<Vec<f64>>,
+        data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
+        learning_rate: f64,
+        epochs: usize,
+        batch_size: usize,
+    ) -> ((Vec<Vec<f64>>, Vec<Vec<f64>>), Vec<f64>) {
+        let mut cost_history: Vec<f64> = Vec::new();
+
+        for epoch in 0..epochs {
+            let (shuffled_training_dataset, shuffled_actual_value_dataset) =
+                shuffle_dataset(data.0, data.1);
+
+            for i in (0..data.1[0].len()).step_by(batch_size) {
+                //batch_size + i properly increments the slice
+                let training_batch: Vec<Vec<f64>> = shuffled_training_dataset[0][i..batch_size + i].to_vec();
+                let actual_value_batch: Vec<Vec<f64>> = shuffled_actual_value_dataset[i..batch_size + i].to_vec();
+
+                //take the partial of w_i for hat(y_i)
+                //take the partial of b_i for hat(y_i)
+                let (bias_gradient, weight_gradient): (Vec<Vec<f64>>, Vec<Vec<f64>>) = (
+                    scalar_multiplication(
+                        &(2.0 / batch_size as f64),
+                        &matrix_multiplication(
+                            &transpose(&training_batch),
+                            &matrix_subtraction(
+                                &matrix_addition(
+                                    &matrix_multiplication(&training_batch, &weight_matrix),
+                                    &bias_matrix,
+                                ),
+                                &actual_value_batch,
+                            ),
+                        ),
+                    ),
+                    scalar_multiplication(
+                        &(2.0 / batch_size as f64),
+                        &sum_columns(&matrix_subtraction(
+                            &matrix_addition(
+                                &matrix_multiplication(&training_batch, &weight_matrix),
+                                &bias_matrix,
+                            ),
+                            &actual_value_batch,
+                        )),
+                    ),
+                );
+
+                let updated_weight_matrix = matrix_subtraction(&weight_matrix, &scalar_multiplication(&learning_rate, &weight_gradient));
+                let updated_bias_matrix = matrix_subtraction(&bias_matrix, &scalar_multiplication(&learning_rate, &bias_gradient));
+            
+            }
+        }
+    }
+
+    pub fn shuffle_dataset(
+        training_dataset: Vec<Vec<Vec<f64>>>,
+        actual_value_dataset: Vec<Vec<f64>>,
+    ) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) {
+        //either training_dataset[0].len() or actual_value_dataset.len() works
+        let mut indices: Vec<usize> = (0..training_dataset[0].len()).collect();
+        indices.shuffle(&mut rand::rng());
+
+        let mut shuffled_training_dataset: Vec<Vec<Vec<f64>>> =
+            vec![vec![
+                vec![0.0; training_dataset[0][0].len()];
+                training_dataset[0].len()
+            ]];
+        let mut shuffled_actual_value_dataset: Vec<Vec<f64>> =
+            vec![vec![0.0; actual_value_dataset[0].len()]; actual_value_dataset.len()];
+        for i in 0..indices.len() {
+            shuffled_training_dataset[0][i] = training_dataset[0][indices[i]].clone();
+            shuffled_actual_value_dataset[i] = actual_value_dataset[indices[i]].clone();
+        }
+
+        (shuffled_training_dataset, shuffled_actual_value_dataset)
     }
 }

@@ -26,7 +26,6 @@ impl Layer {
     }
 }
 
-
 pub fn init_input_layer(training_data: &Vec<Vec<f64>>) -> Layer {
     Layer::new(training_data.clone(), training_data[0].len())
 }
@@ -35,10 +34,7 @@ pub fn train_model(
     mut model: Vec<Layer>,
     number_of_neurons_hidden_layer: &Vec<usize>,
     number_of_hidden_layers: &usize,
-) -> f64 {
-    //weights and biases will be updated in this loop
-    for i in 0..training_data.len() {}
-    0.0
+) {
 }
 
 pub fn init_model(
