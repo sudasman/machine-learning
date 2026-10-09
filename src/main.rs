@@ -3,7 +3,7 @@ mod housing_price_dataset;
 mod ml;
 mod numpy;
 use crate::housing_price_dataset::{
-    generate_training_dataset as generate_housing, unscale_price as price,
+    generate_training_dataset as generate_housing
 };
 use ml::Layer;
 use numpy::functions as function;
@@ -25,13 +25,7 @@ fn main() {
     let epoch: usize = 300;
     let batch_size: usize = 5;
 
-    dbg!(ml::train_model(
-        &data,
-        model,
-        learning_rate,
-        epoch,
-        batch_size,
-    ));
+    
 }
 
 //JUNCTION LAST YEAR BUSINESS CASE EXAM

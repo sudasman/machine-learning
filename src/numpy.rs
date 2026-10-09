@@ -76,7 +76,7 @@ pub mod matrix_arithmetic {
         matrix
     }
     pub fn transpose(matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-        let mut transposed_matrix: Vec<Vec<f64>> = vec![vec![0.0; matrix[0].len()]; matrix.len()];
+        let mut transposed_matrix: Vec<Vec<f64>> = vec![vec![0.0; matrix.len()]; matrix[0].len()];
 
         for i in 0..matrix.len() {
             for j in 0..matrix[0].len() {
@@ -104,12 +104,22 @@ pub mod matrix_arithmetic {
             .map(|i| i.iter().map(|j| scalar * j).collect())
             .collect()
     }
+
+
+    //the Hadamard product
+    pub fn hadamard(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        assert_eq!((matrix1.len(), matrix1[0].len()), (matrix2.len(), matrix2[0].len()));
+        //zip returns a tuple
+        matrix1.iter()
+            .zip(matrix2)
+            .map(|(matrix1_row, matrix2_row)| matrix1_row.iter().zip(matrix2_row).map(|(matrix1_val, matrix2_val)| matrix1_val * matrix2_val).collect())
+            .collect()
+    }   
 }
 
 pub mod functions {
     //for scope reasons
     use super::matrix_arithmetic::*;
-    use crate::housing_price_dataset::scale_price;
     use rand::seq::SliceRandom;
     use rand::*;
     use std::f64::consts::E as e;
@@ -136,120 +146,60 @@ pub mod functions {
     }
 
     pub fn MSE(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
-        let mut sum: f64 = 0.0;
-
-        for i in 0..prediction.len() {
-            let scale_actual_value: f64 = scale_price(&actual_value[i][0], 219000.0, 935000.0);
-            let error: f64 = scale_actual_value - prediction[i][0];
-            let squared_error = error.powf(2.0);
-            sum += squared_error;
-        }
-
-        //219000.0, 935000.0
-        (1.0 / prediction.len() as f64) * sum
+        let sum: f64 = prediction.iter().zip(actual_value).map(|row1, row2| (row1[0] - row2[0])).sum();
+        sum / prediction.len() as f64
     }
 
     pub fn stochastic_gradient_descent(
-        mut bias_matrix: Vec<Vec<f64>>,
-        mut weight_matrix: Vec<Vec<f64>>,
-        data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
-        learning_rate: f64,
-        epochs: usize,
-        batch_size: usize,
+        mode: &mut Vec<Layer>, prediction: &Vec<Vec<f64>>, actual: &Vec<Vec<f64>>, learning_rate: f64,
     ) -> ((Vec<Vec<f64>>, Vec<Vec<f64>>), Vec<f64>) {
-        let mut cost_history: Vec<f64> = Vec::new();
+        let n = prediction.len() as f64;
 
-        for epoch in 0..epochs {
-            let (shuffled_training_dataset, shuffled_actual_value_dataset) =
-                shuffle_dataset(&data.0, &data.1);
+        let mut delta = array::scalar_multiplication(&(2.0 / n), &array::matrix_subtraction(prediction, actual));
 
-            for i in (0..data.0[0].len()).step_by(batch_size) {
-                dbg!(data.0.len());
-                //batch_size + i properly increments the slice
-                //fix: slice if the mod isnt 0, **get the remainder**
-                let remainder = (i + batch_size).min(shuffled_training_dataset.len());
-                let training_batch: Vec<Vec<f64>> =
-                    shuffled_training_dataset[0][i..remainder].to_vec();
-                let actual_value_batch: Vec<Vec<f64>> =
-                    shuffled_actual_value_dataset[i..remainder].to_vec();
+        for i in (0..model.len()).rev() {
+            let weight_gradient: Vec<Vec<f64>> = array::matrix_multiplication(&array::transpose(&model[1].input_matrix), &delta);
+            let bias_gradient: Vec<Vec<f64>> = array::sum_columns(&delta);
 
-                //take the partial of w_i for hat(y_i)
-                //take the partial of b_i for hat(y_i)
-                dbg!(&weight_matrix);
-                dbg!(&bias_matrix);
-                let (weight_gradient, bias_gradient): (Vec<Vec<f64>>, Vec<Vec<f64>>) = (
-                    scalar_multiplication(
-                        &(2.0 / batch_size as f64),
-                        &matrix_multiplication(
-                            &transpose(&training_batch),
-                            &matrix_subtraction(
-                                &add_bias(
-                                    &matrix_multiplication(&training_batch, &weight_matrix),
-                                    &bias_matrix,
-                                ),
-                                &actual_value_batch,
-                            ),
-                        ),
-                    ),
-                    scalar_multiplication(
-                        &(2.0 / batch_size as f64),
-                        &sum_columns(&matrix_subtraction(
-                            &add_bias(
-                                &matrix_multiplication(&training_batch, &weight_matrix),
-                                &bias_matrix,
-                            ),
-                            &actual_value_batch,
-                        )),
-                    ),
-                );
+            let next_delta: Option<Vec<Vec<f64>>> = if 1 > 0 {
+                let back = array::matrix_multiplication(&delta, &array::transpose(&model[1].weight_matrix));
 
-                let updated_weight_matrix = matrix_subtraction(
-                    &weight_matrix,
-                    &scalar_multiplication(&learning_rate, &weight_gradient),
-                );
-                let updated_bias_matrix = matrix_subtraction(
-                    &bias_matrix,
-                    &scalar_multiplication(&learning_rate, &bias_gradient),
-                );
+                //derivative of the sigmoid activation function
+                let sigmoid_derivative: Vec<Vec<f64>> = model[1].input_matrix.iter().map(|row| row.iter().map(|&value| value * (1.0 - value)).collect()).collect();
+                Some(array::hadamard(&back, &sigmoid_derivative))
 
-                weight_matrix = updated_weight_matrix;
-                bias_matrix = updated_bias_matrix;
+            } else {
+                None
+            }
 
-                let prediction: Vec<Vec<f64>> = add_bias(
-                    &matrix_multiplication(&training_batch, &weight_matrix),
-                    &bias_matrix,
-                );
+            //update old parameters wiht new optimized parameters
+            //scaled by some learning rate learning_rate
+            model[1].weight_matrix = array::matrix_subtraction(&model[1].weight_matrix, &array::scalar_multiplication(&learning_rate, &weight_gradient));
+            model[1].bias_matrix = array::matrix_subtraction(&model[1].bias_matrix, &array::scalar_multiplication(&learning_rate, &bias_gradient));
 
-                let cost: f64 = MSE(&prediction, &actual_value_batch);
-
-                cost_history.push(cost);
-
-                if epoch % 100 == 0 {
-                    println!("Epoch: {} Cost: {}", epoch, cost)
-                }
+            if let Some(d) = next_delta {
+                delta = d;
             }
         }
-
-        ((weight_matrix, bias_matrix), cost_history)
     }
 
     pub fn shuffle_dataset(
-        training_dataset: &Vec<Vec<Vec<f64>>>,
+        training_dataset: &Vec<Vec<f64>>,
         actual_value_dataset: &Vec<Vec<f64>>,
     ) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) {
         //either training_dataset[0].len() or actual_value_dataset.len() works
-        let mut indices: Vec<usize> = (0..training_dataset[0].len()).collect();
+        let mut indices: Vec<usize> = (0..training_dataset.len()).collect();
         indices.shuffle(&mut rand::rng());
 
-        let mut shuffled_training_dataset: Vec<Vec<Vec<f64>>> =
-            vec![vec![
-                vec![0.0; training_dataset[0][0].len()];
-                training_dataset[0].len()
-            ]];
+        let mut shuffled_training_dataset: Vec<Vec<f64>>> =
+            vec![
+                vec![0.0; training_dataset[0].len()];
+                training_dataset.len()
+            ];
         let mut shuffled_actual_value_dataset: Vec<Vec<f64>> =
             vec![vec![0.0; actual_value_dataset[0].len()]; actual_value_dataset.len()];
         for i in 0..indices.len() {
-            shuffled_training_dataset[0][i] = training_dataset[0][indices[i]].clone();
+            shuffled_training_dataset[i] = training_dataset[indices[i]].clone();
             shuffled_actual_value_dataset[i] = actual_value_dataset[indices[i]].clone();
         }
 
