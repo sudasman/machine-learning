@@ -56,7 +56,12 @@ pub mod matrix_arithmetic {
         assert_eq!(matrix[0].len(), bias_matrix[0].len());
         matrix
             .iter()
-            .map(|row| row.iter().zip(&bias_matrix[0]).map(|(a, b)| a + b).collect())
+            .map(|row| {
+                row.iter()
+                    .zip(&bias_matrix[0])
+                    .map(|(a, b)| a + b)
+                    .collect()
+            })
             .collect()
     }
 
@@ -105,16 +110,25 @@ pub mod matrix_arithmetic {
             .collect()
     }
 
-
     //the Hadamard product
     pub fn hadamard(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-        assert_eq!((matrix1.len(), matrix1[0].len()), (matrix2.len(), matrix2[0].len()));
+        assert_eq!(
+            (matrix1.len(), matrix1[0].len()),
+            (matrix2.len(), matrix2[0].len())
+        );
         //zip returns a tuple
-        matrix1.iter()
+        matrix1
+            .iter()
             .zip(matrix2)
-            .map(|(matrix1_row, matrix2_row)| matrix1_row.iter().zip(matrix2_row).map(|(matrix1_val, matrix2_val)| matrix1_val * matrix2_val).collect())
+            .map(|(matrix1_row, matrix2_row)| {
+                matrix1_row
+                    .iter()
+                    .zip(matrix2_row)
+                    .map(|(matrix1_val, matrix2_val)| matrix1_val * matrix2_val)
+                    .collect()
+            })
             .collect()
-    }   
+    }
 }
 
 pub mod functions {
@@ -123,6 +137,7 @@ pub mod functions {
     use rand::seq::SliceRandom;
     use rand::*;
     use std::f64::consts::E as e;
+    use crate::ml::Layer as Layer;
     //Use Case: Binary Classification (Yes/No)
     pub fn sigmoid(z: f64) -> f64 {
         let base: f64 = e;
@@ -146,36 +161,53 @@ pub mod functions {
     }
 
     pub fn MSE(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
-        let sum: f64 = prediction.iter().zip(actual_value).map(|row1, row2| (row1[0] - row2[0])).sum();
+        let sum: f64 = prediction
+            .iter()
+            .zip(actual_value)
+            .map(|(row1, row2)| (row1[0] - row2[0]))
+            .sum();
         sum / prediction.len() as f64
     }
 
     pub fn stochastic_gradient_descent(
-        mode: &mut Vec<Layer>, prediction: &Vec<Vec<f64>>, actual: &Vec<Vec<f64>>, learning_rate: f64,
-    ) -> ((Vec<Vec<f64>>, Vec<Vec<f64>>), Vec<f64>) {
+        model: &mut Vec<Layer>,
+        prediction: &Vec<Vec<f64>>,
+        actual: &Vec<Vec<f64>>,
+        learning_rate: f64,
+    ) {
         let n = prediction.len() as f64;
 
-        let mut delta = array::scalar_multiplication(&(2.0 / n), &array::matrix_subtraction(prediction, actual));
+        let mut delta = scalar_multiplication(&(2.0 / n), &matrix_subtraction(prediction, actual));
 
         for i in (0..model.len()).rev() {
-            let weight_gradient: Vec<Vec<f64>> = array::matrix_multiplication(&array::transpose(&model[1].input_matrix), &delta);
-            let bias_gradient: Vec<Vec<f64>> = array::sum_columns(&delta);
+            let weight_gradient: Vec<Vec<f64>> =
+                matrix_multiplication(&transpose(&model[1].input_matrix), &delta);
+            let bias_gradient: Vec<Vec<f64>> = sum_columns(&delta);
 
             let next_delta: Option<Vec<Vec<f64>>> = if 1 > 0 {
-                let back = array::matrix_multiplication(&delta, &array::transpose(&model[1].weight_matrix));
+                let back = matrix_multiplication(&delta, &transpose(&model[1].weight_matrix));
 
                 //derivative of the sigmoid activation function
-                let sigmoid_derivative: Vec<Vec<f64>> = model[1].input_matrix.iter().map(|row| row.iter().map(|&value| value * (1.0 - value)).collect()).collect();
-                Some(array::hadamard(&back, &sigmoid_derivative))
-
+                let sigmoid_derivative: Vec<Vec<f64>> = model[1]
+                    .input_matrix
+                    .iter()
+                    .map(|row| row.iter().map(|&value| value * (1.0 - value)).collect())
+                    .collect();
+                Some(hadamard(&back, &sigmoid_derivative))
             } else {
                 None
-            }
+            };
 
             //update old parameters wiht new optimized parameters
             //scaled by some learning rate learning_rate
-            model[1].weight_matrix = array::matrix_subtraction(&model[1].weight_matrix, &array::scalar_multiplication(&learning_rate, &weight_gradient));
-            model[1].bias_matrix = array::matrix_subtraction(&model[1].bias_matrix, &array::scalar_multiplication(&learning_rate, &bias_gradient));
+            model[1].weight_matrix = matrix_subtraction(
+                &model[1].weight_matrix,
+                &scalar_multiplication(&learning_rate, &weight_gradient),
+            );
+            model[1].bias_matrix = matrix_subtraction(
+                &model[1].bias_matrix,
+                &scalar_multiplication(&learning_rate, &bias_gradient),
+            );
 
             if let Some(d) = next_delta {
                 delta = d;
@@ -186,16 +218,13 @@ pub mod functions {
     pub fn shuffle_dataset(
         training_dataset: &Vec<Vec<f64>>,
         actual_value_dataset: &Vec<Vec<f64>>,
-    ) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) {
+    ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
         //either training_dataset[0].len() or actual_value_dataset.len() works
         let mut indices: Vec<usize> = (0..training_dataset.len()).collect();
         indices.shuffle(&mut rand::rng());
 
-        let mut shuffled_training_dataset: Vec<Vec<f64>>> =
-            vec![
-                vec![0.0; training_dataset[0].len()];
-                training_dataset.len()
-            ];
+        let mut shuffled_training_dataset: Vec<Vec<f64>> =
+            vec![vec![0.0; training_dataset[0].len()]; training_dataset.len()];
         let mut shuffled_actual_value_dataset: Vec<Vec<f64>> =
             vec![vec![0.0; actual_value_dataset[0].len()]; actual_value_dataset.len()];
         for i in 0..indices.len() {

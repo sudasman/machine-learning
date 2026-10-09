@@ -1,7 +1,7 @@
 use rand::prelude::*;
 
 //features: [0]: Square Feet, [1]: Bedrooms, [2]: Age
-pub fn generate_training_dataset(amount: usize) -> (Vec<Vec<f64>>>, Vec<Vec<f64>>) {
+pub fn generate_training_dataset(amount: usize) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
     let mut rng = rand::rng();
 
     let mut training: Vec<Vec<f64>> = Vec::new();
@@ -21,16 +21,25 @@ pub fn generate_training_dataset(amount: usize) -> (Vec<Vec<f64>>>, Vec<Vec<f64>
     (training, actual_value)
 }
 
-//standardize the data 
+//standardize the data
 pub fn standardize_data(training_dataset: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let training_size: f64 = training_dataset.len() as f64;
-    let mut res = training_size.clone();
-    
+    let mut res: Vec<Vec<f64>> = training_dataset.clone();
+
     for i in 0..training_dataset[0].len() {
-        let mean = training_dataset.iter().map(|row|).sum::<f64>() / training_size;
-        let standard_deviation = (x.iter().map(|row| (row[i] - mean).powi(2)).sum::<f64>() / training_size).sqrt();
+        let mean = training_dataset.iter().map(|row| row[i]).sum::<f64>() / training_size;
+        let standard_deviation =
+            (training_dataset.iter().map(|row| (row[i] - mean).powi(2)).sum::<f64>() / training_size).sqrt();
         //z-score
-        res.iter().zip(training_dataset).map(|(row1, row2)| row1.iter().zip(row2).map(|(val1, val2)| (val2 - mean) / standard_deviation).collect()).collect();
+        res.iter()
+            .zip(training_dataset)
+            .map(|(row1, row2)| {
+                row1.iter()
+                    .zip(row2)
+                    .map(|(val1, val2)| (val2 - mean) / standard_deviation)
+                    .collect::<Vec<f64>>()
+            })
+            .collect::<Vec<Vec<f64>>>();
     }
     res
 }
