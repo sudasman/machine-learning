@@ -12,8 +12,8 @@ pub struct Layer {
 
 impl Layer {
     pub fn new(input_matrix: Vec<Vec<f64>>, neurons: usize) -> Self {
-        let weight_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, input_matrix.len(), true);
-        let bias_matrix: Vec<Vec<f64>> = array::create_matrix(neurons, 1, true);
+        let weight_matrix: Vec<Vec<f64>> = array::create_matrix(input_matrix[0].len(), neurons, true);
+        let bias_matrix: Vec<Vec<f64>> = array::create_matrix(1, neurons, true);
         let weighted_sum_matrix = weighted_sum_matrix(&input_matrix, &weight_matrix, &bias_matrix);
 
         Layer {
@@ -36,8 +36,21 @@ pub fn train_model(
     epoch: usize,
     batch_size: usize,
 ) {
-    assert!(batch_size <= data.0[0].len(), "You're trying to use batchsize: {} for a dataset with size: {}", batch_size, data.0[0].len());
-    let (updated_parameters, cost_history): ((Vec<Vec<f64>>, Vec<Vec<f64>>), Vec<f64>) = function::stochastic_gradient_descent(model[0].bias_matrix.clone(), model[0].weight_matrix.clone(), data, learning_rate, epoch, batch_size);
+    assert!(
+        batch_size <= data.0.len() && data.0.len() % batch_size == 0,
+        "You're trying to use batchsize: {} for a dataset with size: {}",
+        batch_size,
+        data.0.len()
+    );
+    let (updated_parameters, cost_history): ((Vec<Vec<f64>>, Vec<Vec<f64>>), Vec<f64>) =
+        function::stochastic_gradient_descent(
+            model[0].bias_matrix.clone(),
+            model[0].weight_matrix.clone(),
+            data,
+            learning_rate,
+            epoch,
+            batch_size,
+        );
 }
 
 pub fn init_model(
@@ -82,8 +95,8 @@ pub fn weighted_sum_matrix(
     weight_matrix: &Vec<Vec<f64>>,
     bias_matrix: &Vec<Vec<f64>>,
 ) -> Vec<Vec<f64>> {
-    array::matrix_addition(
-        &array::matrix_multiplication(weight_matrix, input_matrix),
+    array::add_bias(
+        &array::matrix_multiplication(input_matrix, weight_matrix),
         bias_matrix,
     )
 }

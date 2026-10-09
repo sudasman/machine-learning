@@ -10,7 +10,7 @@ use numpy::functions as function;
 use numpy::matrix_arithmetic as array;
 
 fn main() {
-    let number_of_datasets = 5;
+    let number_of_datasets = 30;
     let data: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) = generate_housing(number_of_datasets);
     let number_of_neurons_hidden_layer = vec![8];
     let number_of_hidden_layers = 1;
@@ -23,8 +23,8 @@ fn main() {
 
     let learning_rate: f64 = 0.01;
     let epoch: usize = 300;
-    let batch_size: usize = 20;
-    
+    let batch_size: usize = 5;
+
     dbg!(ml::train_model(
         &data,
         model,

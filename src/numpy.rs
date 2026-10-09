@@ -52,6 +52,14 @@ pub mod matrix_arithmetic {
         matrix
     }
 
+    pub fn add_bias(matrix: &Vec<Vec<f64>>, bias_matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        assert_eq!(matrix[0].len(), bias_matrix[0].len());
+        matrix
+            .iter()
+            .map(|row| row.iter().zip(&bias_matrix[0]).map(|(a, b)| a + b).collect())
+            .collect()
+    }
+
     pub fn matrix_subtraction(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
         assert_eq!(
             (matrix1.len(), matrix1[0].len()),
@@ -79,11 +87,11 @@ pub mod matrix_arithmetic {
     }
 
     pub fn sum_columns(matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-        let mut result = vec![vec![0.0]; matrix.len()];
+        let mut result = vec![vec![0.0; matrix[0].len()]];
 
         for i in 0..matrix.len() {
             for j in 0..matrix[i].len() {
-                result[i][0] += matrix[i][j];
+                result[0][j] += matrix[i][j];
             }
         }
 
@@ -155,22 +163,27 @@ pub mod functions {
             let (shuffled_training_dataset, shuffled_actual_value_dataset) =
                 shuffle_dataset(&data.0, &data.1);
 
-            for i in (0..data.1[0].len()).step_by(batch_size) {
+            for i in (0..data.0[0].len()).step_by(batch_size) {
+                dbg!(data.0.len());
                 //batch_size + i properly increments the slice
+                //fix: slice if the mod isnt 0, **get the remainder**
+                let remainder = (i + batch_size).min(shuffled_training_dataset.len());
                 let training_batch: Vec<Vec<f64>> =
-                    shuffled_training_dataset[0][i..batch_size + i].to_vec();
+                    shuffled_training_dataset[0][i..remainder].to_vec();
                 let actual_value_batch: Vec<Vec<f64>> =
-                    shuffled_actual_value_dataset[i..batch_size + i].to_vec();
+                    shuffled_actual_value_dataset[i..remainder].to_vec();
 
                 //take the partial of w_i for hat(y_i)
                 //take the partial of b_i for hat(y_i)
-                let (bias_gradient, weight_gradient): (Vec<Vec<f64>>, Vec<Vec<f64>>) = (
+                dbg!(&weight_matrix);
+                dbg!(&bias_matrix);
+                let (weight_gradient, bias_gradient): (Vec<Vec<f64>>, Vec<Vec<f64>>) = (
                     scalar_multiplication(
                         &(2.0 / batch_size as f64),
                         &matrix_multiplication(
                             &transpose(&training_batch),
                             &matrix_subtraction(
-                                &matrix_addition(
+                                &add_bias(
                                     &matrix_multiplication(&training_batch, &weight_matrix),
                                     &bias_matrix,
                                 ),
@@ -181,7 +194,7 @@ pub mod functions {
                     scalar_multiplication(
                         &(2.0 / batch_size as f64),
                         &sum_columns(&matrix_subtraction(
-                            &matrix_addition(
+                            &add_bias(
                                 &matrix_multiplication(&training_batch, &weight_matrix),
                                 &bias_matrix,
                             ),
@@ -202,7 +215,7 @@ pub mod functions {
                 weight_matrix = updated_weight_matrix;
                 bias_matrix = updated_bias_matrix;
 
-                let prediction: Vec<Vec<f64>> = matrix_addition(
+                let prediction: Vec<Vec<f64>> = add_bias(
                     &matrix_multiplication(&training_batch, &weight_matrix),
                     &bias_matrix,
                 );
