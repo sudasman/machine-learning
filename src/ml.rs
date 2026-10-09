@@ -30,11 +30,14 @@ pub fn init_input_layer(training_data: &Vec<Vec<f64>>) -> Layer {
     Layer::new(training_data.clone(), training_data[0].len())
 }
 pub fn train_model(
-    training_data: Vec<Vec<Vec<f64>>>,
+    data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
     mut model: Vec<Layer>,
-    number_of_neurons_hidden_layer: &Vec<usize>,
-    number_of_hidden_layers: &usize,
+    learning_rate: f64,
+    epoch: usize,
+    batch_size: usize,
 ) {
+    assert!(batch_size <= data.0[0].len(), "You're trying to use batchsize: {} for a dataset with size: {}", batch_size, data.0[0].len());
+    let (updated_parameters, cost_history): ((Vec<Vec<f64>>, Vec<Vec<f64>>), Vec<f64>) = function::stochastic_gradient_descent(model[0].bias_matrix.clone(), model[0].weight_matrix.clone(), data, learning_rate, epoch, batch_size);
 }
 
 pub fn init_model(

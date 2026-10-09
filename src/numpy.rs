@@ -102,8 +102,8 @@ pub mod functions {
     //for scope reasons
     use super::matrix_arithmetic::*;
     use crate::housing_price_dataset::scale_price;
-    use rand::*;
     use rand::seq::SliceRandom;
+    use rand::*;
     use std::f64::consts::E as e;
     //Use Case: Binary Classification (Yes/No)
     pub fn sigmoid(z: f64) -> f64 {
@@ -142,8 +142,8 @@ pub mod functions {
     }
 
     pub fn stochastic_gradient_descent(
-        bias_matrix: Vec<Vec<f64>>,
-        weight_matrix: Vec<Vec<f64>>,
+        mut bias_matrix: Vec<Vec<f64>>,
+        mut weight_matrix: Vec<Vec<f64>>,
         data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
         learning_rate: f64,
         epochs: usize,
@@ -153,12 +153,14 @@ pub mod functions {
 
         for epoch in 0..epochs {
             let (shuffled_training_dataset, shuffled_actual_value_dataset) =
-                shuffle_dataset(data.0, data.1);
+                shuffle_dataset(&data.0, &data.1);
 
             for i in (0..data.1[0].len()).step_by(batch_size) {
                 //batch_size + i properly increments the slice
-                let training_batch: Vec<Vec<f64>> = shuffled_training_dataset[0][i..batch_size + i].to_vec();
-                let actual_value_batch: Vec<Vec<f64>> = shuffled_actual_value_dataset[i..batch_size + i].to_vec();
+                let training_batch: Vec<Vec<f64>> =
+                    shuffled_training_dataset[0][i..batch_size + i].to_vec();
+                let actual_value_batch: Vec<Vec<f64>> =
+                    shuffled_actual_value_dataset[i..batch_size + i].to_vec();
 
                 //take the partial of w_i for hat(y_i)
                 //take the partial of b_i for hat(y_i)
@@ -188,16 +190,39 @@ pub mod functions {
                     ),
                 );
 
-                let updated_weight_matrix = matrix_subtraction(&weight_matrix, &scalar_multiplication(&learning_rate, &weight_gradient));
-                let updated_bias_matrix = matrix_subtraction(&bias_matrix, &scalar_multiplication(&learning_rate, &bias_gradient));
-            
+                let updated_weight_matrix = matrix_subtraction(
+                    &weight_matrix,
+                    &scalar_multiplication(&learning_rate, &weight_gradient),
+                );
+                let updated_bias_matrix = matrix_subtraction(
+                    &bias_matrix,
+                    &scalar_multiplication(&learning_rate, &bias_gradient),
+                );
+
+                weight_matrix = updated_weight_matrix;
+                bias_matrix = updated_bias_matrix;
+
+                let prediction: Vec<Vec<f64>> = matrix_addition(
+                    &matrix_multiplication(&training_batch, &weight_matrix),
+                    &bias_matrix,
+                );
+
+                let cost: f64 = MSE(&prediction, &actual_value_batch);
+
+                cost_history.push(cost);
+
+                if epoch % 100 == 0 {
+                    println!("Epoch: {} Cost: {}", epoch, cost)
+                }
             }
         }
+
+        ((weight_matrix, bias_matrix), cost_history)
     }
 
     pub fn shuffle_dataset(
-        training_dataset: Vec<Vec<Vec<f64>>>,
-        actual_value_dataset: Vec<Vec<f64>>,
+        training_dataset: &Vec<Vec<Vec<f64>>>,
+        actual_value_dataset: &Vec<Vec<f64>>,
     ) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) {
         //either training_dataset[0].len() or actual_value_dataset.len() works
         let mut indices: Vec<usize> = (0..training_dataset[0].len()).collect();

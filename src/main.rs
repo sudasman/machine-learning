@@ -21,11 +21,16 @@ fn main() {
         &number_of_hidden_layers,
     );
 
+    let learning_rate: f64 = 0.01;
+    let epoch: usize = 300;
+    let batch_size: usize = 20;
+    
     dbg!(ml::train_model(
-        data.0,
+        &data,
         model,
-        &number_of_neurons_hidden_layer,
-        &number_of_hidden_layers
+        learning_rate,
+        epoch,
+        batch_size,
     ));
 }
 
