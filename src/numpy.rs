@@ -10,8 +10,8 @@ pub mod matrix_arithmetic {
                 .collect();
         }
         (0..n)
-            .map(|_| (0..m).map(|_| rng.random_range(-1.0..=1.0)).collect())
-            .collect()
+            .map(|_| (0..m).map(|_| rng.random_range(-1.0..=1.0)).collect::<Vec<f64>>())
+            .collect::<Vec<Vec<f64>>>()
     }
 
     pub fn create_matrix_empty(n: usize, m: usize) -> Vec<Vec<f64>> {
@@ -52,7 +52,9 @@ pub mod matrix_arithmetic {
         matrix
     }
 
+    //broadcasting
     pub fn add_bias(matrix: &Vec<Vec<f64>>, bias_matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        //check that the columns of the two matrices are equal
         assert_eq!(matrix[0].len(), bias_matrix[0].len());
         matrix
             .iter()
@@ -60,9 +62,9 @@ pub mod matrix_arithmetic {
                 row.iter()
                     .zip(&bias_matrix[0])
                     .map(|(a, b)| a + b)
-                    .collect()
+                    .collect::<Vec<f64>>()
             })
-            .collect()
+            .collect::<Vec<Vec<f64>>>()
     }
 
     pub fn matrix_subtraction(matrix1: &Vec<Vec<f64>>, matrix2: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
@@ -106,8 +108,8 @@ pub mod matrix_arithmetic {
     pub fn scalar_multiplication(scalar: &f64, matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
         matrix
             .iter()
-            .map(|i| i.iter().map(|j| scalar * j).collect())
-            .collect()
+            .map(|i| i.iter().map(|j| scalar * j).collect::<Vec<f64>>())
+            .collect::<Vec<Vec<f64>>>()
     }
 
     //the Hadamard product
@@ -125,9 +127,9 @@ pub mod matrix_arithmetic {
                     .iter()
                     .zip(matrix2_row)
                     .map(|(matrix1_val, matrix2_val)| matrix1_val * matrix2_val)
-                    .collect()
+                    .collect::<Vec<f64>>()
             })
-            .collect()
+            .collect::<Vec<Vec<f64>>>()
     }
 }
 
@@ -164,7 +166,8 @@ pub mod functions {
         let sum: f64 = prediction
             .iter()
             .zip(actual_value)
-            .map(|(row1, row2)| (row1[0] - row2[0]))
+            //powi raises to a integer exponent, powf raises to a float exponent
+            .map(|(row1, row2)| (row1[0] - row2[0]).powi(2))
             .sum();
         sum / prediction.len() as f64
     }
@@ -181,14 +184,16 @@ pub mod functions {
 
         for i in (0..model.len()).rev() {
             let weight_gradient: Vec<Vec<f64>> =
-                matrix_multiplication(&transpose(&model[1].input_matrix), &delta);
+                matrix_multiplication(&transpose(&model[i].input_matrix), &delta);
             let bias_gradient: Vec<Vec<f64>> = sum_columns(&delta);
 
-            let next_delta: Option<Vec<Vec<f64>>> = if 1 > 0 {
-                let back = matrix_multiplication(&delta, &transpose(&model[1].weight_matrix));
+            let next_delta: Option<Vec<Vec<f64>>> = if i > 0 {
+                //how loss changes
+                let back = matrix_multiplication(&delta, &transpose(&model[i].weight_matrix));
 
                 //derivative of the sigmoid activation function
-                let sigmoid_derivative: Vec<Vec<f64>> = model[1]
+                //tells the sensitivity of a neurons activation function w.r.t it's weighted sum
+                let sigmoid_derivative: Vec<Vec<f64>> = model[i]
                     .input_matrix
                     .iter()
                     .map(|row| row.iter().map(|&value| value * (1.0 - value)).collect())
@@ -200,12 +205,12 @@ pub mod functions {
 
             //update old parameters wiht new optimized parameters
             //scaled by some learning rate learning_rate
-            model[1].weight_matrix = matrix_subtraction(
-                &model[1].weight_matrix,
+            model[i].weight_matrix = matrix_subtraction(
+                &model[i].weight_matrix,
                 &scalar_multiplication(&learning_rate, &weight_gradient),
             );
-            model[1].bias_matrix = matrix_subtraction(
-                &model[1].bias_matrix,
+            model[i].bias_matrix = matrix_subtraction(
+                &model[i].bias_matrix,
                 &scalar_multiplication(&learning_rate, &bias_gradient),
             );
 
