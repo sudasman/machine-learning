@@ -16,9 +16,17 @@ pub fn generate_training_dataset(amount: usize) -> (Vec<Vec<f64>>, Vec<Vec<f64>>
             + rng.random_range(-20000.0..=20000.0);
 
         training.push(vec![square_feet, bedrooms, age]);
-        actual_value.push(vec![price]);
+        actual_value.push(vec![scale_price(&price, 219000.0, 935000.0)]);
     }
     (training, actual_value)
+}
+
+pub fn scale_price(price: &f64, min_price: f64, max_price: f64) -> f64 {
+    2.0 * (price - min_price) / (max_price - min_price) - 1.0
+}
+
+pub fn unscale_price(scaled_price: &f64, min_price: f64, max_price: f64) -> f64 {
+    (scaled_price + 1.0) / 2.0 * (max_price - min_price) + min_price
 }
 
 //standardize the data
@@ -26,21 +34,14 @@ pub fn standardize_data(dataset: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let training_size: f64 = dataset.len() as f64;
     let mut res: Vec<Vec<f64>> = dataset.clone();
 
-    for i in 0..dataset[0].len() {
-        let mean = dataset.iter().map(|row| row[i]).sum::<f64>() / training_size;
+    for j in 0..dataset[0].len() {
+        let mean = dataset.iter().map(|row| row[j]).sum::<f64>() / training_size;
         let standard_deviation =
-            (dataset.iter().map(|row| (row[i] - mean).powi(2)).sum::<f64>() / training_size).sqrt();
+            (dataset.iter().map(|row| (row[j] - mean).powi(2)).sum::<f64>() / training_size).sqrt();
         //z-score
-        res.iter()
-            .zip(dataset)
-            .map(|(row1, row2)| {
-                row1.iter()
-                    .zip(row2)
-                    .map(|(val1, val2)| (val2 - mean) / standard_deviation)
-                    .collect::<Vec<f64>>()
-            })
-            .collect::<Vec<Vec<f64>>>();
+        for i in 0..dataset.len() {
+            res[i][j] = (dataset[i][j] - mean) / standard_deviation; // z-score, column j only
+        }
     }
-    dbg!(&res);
     res
 }
