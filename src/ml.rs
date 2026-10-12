@@ -34,7 +34,18 @@ impl Layer {
 }
 
 pub fn init_input_layer(training_data: &Vec<Vec<f64>>) -> Layer {
-    Layer::new(training_data.clone(), training_data.len())
+    Layer::new(training_data.clone(), training_data[0].len())
+}
+
+pub fn eval_model_training(cost_history: &Vec<f64>){
+    dbg!(&cost_history);
+
+    let cost_difference: f64 = cost_history[0] - cost_history[cost_history.len() - 1];
+    
+    println!("Cost Start: {}",cost_history[0]);
+    println!("Cost End: {}", cost_history[cost_history.len() - 1]);
+    println!("Cost Difference: {}", cost_difference);
+
 }
 
 pub fn train_model(
