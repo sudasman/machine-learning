@@ -22,17 +22,17 @@ pub fn generate_training_dataset(amount: usize) -> (Vec<Vec<f64>>, Vec<Vec<f64>>
 }
 
 //standardize the data
-pub fn standardize_data(training_dataset: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-    let training_size: f64 = training_dataset.len() as f64;
-    let mut res: Vec<Vec<f64>> = training_dataset.clone();
+pub fn standardize_data(dataset: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    let training_size: f64 = dataset.len() as f64;
+    let mut res: Vec<Vec<f64>> = dataset.clone();
 
-    for i in 0..training_dataset[0].len() {
-        let mean = training_dataset.iter().map(|row| row[i]).sum::<f64>() / training_size;
+    for i in 0..dataset[0].len() {
+        let mean = dataset.iter().map(|row| row[i]).sum::<f64>() / training_size;
         let standard_deviation =
-            (training_dataset.iter().map(|row| (row[i] - mean).powi(2)).sum::<f64>() / training_size).sqrt();
+            (dataset.iter().map(|row| (row[i] - mean).powi(2)).sum::<f64>() / training_size).sqrt();
         //z-score
         res.iter()
-            .zip(training_dataset)
+            .zip(dataset)
             .map(|(row1, row2)| {
                 row1.iter()
                     .zip(row2)
@@ -41,5 +41,6 @@ pub fn standardize_data(training_dataset: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
             })
             .collect::<Vec<Vec<f64>>>();
     }
+    dbg!(&res);
     res
 }
