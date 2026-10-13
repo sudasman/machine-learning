@@ -37,15 +37,14 @@ pub fn init_input_layer(training_data: &Vec<Vec<f64>>) -> Layer {
     Layer::new(training_data.clone(), training_data[0].len())
 }
 
-pub fn eval_model_training(cost_history: &Vec<f64>){
+pub fn eval_model_training(cost_history: &Vec<f64>) {
     dbg!(&cost_history);
 
     let cost_difference: f64 = cost_history[0] - cost_history[cost_history.len() - 1];
-    
-    println!("Cost Start: {}",cost_history[0]);
+
+    println!("Cost Start: {}", cost_history[0]);
     println!("Cost End: {}", cost_history[cost_history.len() - 1]);
     println!("Cost Difference: {}", cost_difference);
-
 }
 
 pub fn train_model(
@@ -72,7 +71,7 @@ pub fn train_model(
 
             let prediction = forward_pass(model, &training_batch);
 
-            total += function::MSE(&prediction, &actual_batch);
+            total += function::mse(&prediction, &actual_batch);
             backward_pass(model, &prediction, &actual_batch, learning_rate);
             batches += 1;
         }
@@ -159,7 +158,8 @@ pub fn forward_pass(model: &mut Vec<Layer>, batch: &Vec<Vec<f64>>) -> Vec<Vec<f6
             apply_activation_function(layer.weighted_sum_matrix.clone())
         };
     }
-    input
+    let prediction = input.clone();
+    prediction
 }
 
 fn backward_pass(
@@ -169,4 +169,76 @@ fn backward_pass(
     learning_rate: f64,
 ) {
     function::stochastic_gradient_descent(model, prediction, actual, learning_rate);
+}
+
+pub fn train_test_split(
+    training_dataset: &Vec<Vec<f64>>,
+    actual_value_dataset: &Vec<Vec<f64>>,
+    training_split: f64,
+) -> (
+    //x: training dataset, y: actual value dataset
+    //(training split x, training split y)
+    //(testing split x, testing split y)
+    (Vec<Vec<f64>>, Vec<Vec<f64>>),
+    (Vec<Vec<f64>>, Vec<Vec<f64>>),
+) {
+    let (shuffled_training_dataset, shuffled_actual_value_dataset): (Vec<Vec<f64>>, Vec<Vec<f64>>) =
+        function::shuffle_dataset(training_dataset, actual_value_dataset);
+    //rounds the float down (truncation)
+    let split = (shuffled_training_dataset.len() as f64 * training_split) as usize;
+    (
+        //[..split] is exclusive of split
+        (
+            shuffled_training_dataset[..split].to_vec(),
+            shuffled_actual_value_dataset[..split].to_vec(),
+        ),
+        //[split..] is inclusive of split
+        (
+            shuffled_training_dataset[split..].to_vec(),
+            shuffled_actual_value_dataset[split..].to_vec(),
+        ),
+    )
+}
+
+pub fn test_model(
+    //foward pass requires model to be a mutable reference
+    model: &mut Vec<Layer>,
+    //first element in the tuple is the testing training set and the second is the testing actual value set
+    testing_split_data: &(Vec<Vec<f64>>, Vec<Vec<f64>>),
+    min_price: f64,
+    max_price: f64,
+    margin_of_error: f64,
+) {
+    let prediction = forward_pass(model, &testing_split_data.0);
+
+    //let scaled_mse = function::mse(&prediction, &testing_split_data.1);
+
+    let (mut squared_sum, mut abs_sum, mut correct_predictions): (f64, f64, f64) = (0.0, 0.0, 0.0);
+    //prediction.iter(): Vec<Vec<f64>>
+    //therefore prediction: Vec<f64> -> same case for actual_value and &testing_split_data.1
+    for (prediction, actual_value) in prediction.iter().zip(&testing_split_data.1) {
+        let prediction_price =
+            crate::housing_price_dataset::unscale_price(&prediction[0], &min_price, &max_price);
+        let actual_value_price =
+            crate::housing_price_dataset::unscale_price(&actual_value[0], &min_price, &max_price);
+        let error = prediction_price - actual_value_price;
+        squared_sum += error * error;
+        abs_sum += error.abs();
+
+        if error.abs() <= margin_of_error {
+            correct_predictions += 1.0;
+        }
+    }
+    //need it to be a f64 so no type issues when calculating metrics
+    let number_of_predictions: f64 = prediction.len() as f64;
+    //Root Mean Square Error
+    let rmse: f64 = (squared_sum / number_of_predictions).sqrt();
+    //Mean Absolute Error
+    let mae: f64 = abs_sum / number_of_predictions;
+    let accuracy: f64 = (correct_predictions / number_of_predictions) * 100.0;
+    println!("Test samples: {}", prediction.len());
+    println!("RMSE: {}", rmse);
+    println!("MAE: {}", mae);
+    println!("Margin of Error: ${}", margin_of_error);
+    println!("Accuracy: {}%", accuracy);
 }
