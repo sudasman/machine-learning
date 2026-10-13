@@ -10,7 +10,11 @@ pub mod matrix_arithmetic {
                 .collect();
         }
         (0..n)
-            .map(|_| (0..m).map(|_| rng.random_range(-1.0..=1.0)).collect::<Vec<f64>>())
+            .map(|_| {
+                (0..m)
+                    .map(|_| rng.random_range(-1.0..=1.0))
+                    .collect::<Vec<f64>>()
+            })
             .collect::<Vec<Vec<f64>>>()
     }
 
@@ -136,10 +140,10 @@ pub mod matrix_arithmetic {
 pub mod functions {
     //for scope reasons
     use super::matrix_arithmetic::*;
+    use crate::ml::Layer;
     use rand::seq::SliceRandom;
     use rand::*;
     use std::f64::consts::E as e;
-    use crate::ml::Layer as Layer;
     //Use Case: Binary Classification (Yes/No)
     pub fn sigmoid(z: f64) -> f64 {
         let base: f64 = e;
@@ -162,7 +166,7 @@ pub mod functions {
         matrix
     }
 
-    pub fn MSE(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
+    pub fn mse(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
         let sum: f64 = prediction
             .iter()
             .zip(actual_value)
