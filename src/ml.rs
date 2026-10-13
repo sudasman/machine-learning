@@ -1,3 +1,4 @@
+use crate::housing_price_dataset::generate_training_dataset;
 use crate::numpy::functions as function;
 use crate::numpy::matrix_arithmetic as array;
 
@@ -31,6 +32,44 @@ impl Layer {
         self.weighted_sum_matrix =
             weighted_sum_matrix(&self.input_matrix, &self.weight_matrix, &self.bias_matrix);
     }
+}
+
+pub struct ModelSettings {
+    //number_of_neurons_hidden_layer.len() == number_of_hidden_layers
+    pub number_of_neurons_hidden_layer: Vec<usize>,
+    pub number_of_hidden_layers: usize,
+    pub learning_rate: f64,
+    //batch size must be less than or equal to number_of_datasets
+    pub batch_size: usize,
+    pub epochs: usize,
+}
+
+pub struct Dataset {
+    pub number_of_datasets: usize,
+    pub dataset: (Vec<Vec<f64>>, Vec<Vec<f64>>),
+}
+
+impl Dataset {
+    pub fn new(number_of_datasets: usize) -> Self {
+        Dataset {
+            //field name matches argument name, so no need to explicitly specify the field name
+            number_of_datasets,
+            dataset: (Vec::new(), Vec::new()),
+        }
+    }
+
+    pub fn generate_dataset(&mut self, dataset_type: AvailableDatasets) {
+        match dataset_type {
+            AvailableDatasets::Housing => {
+                self.dataset = generate_training_dataset(self.number_of_datasets);
+            }
+            _ => (),
+        }
+    }
+}
+
+pub enum AvailableDatasets {
+    Housing,
 }
 
 pub fn init_input_layer(training_data: &Vec<Vec<f64>>) -> Layer {
@@ -91,6 +130,10 @@ pub fn init_model(
     input_layer: Layer,
     number_of_hidden_layers: &usize,
 ) -> Vec<Layer> {
+    assert_eq!(
+        number_of_neurons_hidden_layer.len(),
+        number_of_hidden_layers.clone()
+    );
     let mut model = init_hidden_layer(
         number_of_neurons_hidden_layer,
         input_layer,
