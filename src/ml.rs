@@ -294,10 +294,120 @@ pub mod neural_network {
     }
 }
 
-pub mod convolutional_neural_network{
+pub mod convolutional_neural_network {
     use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
 
-    
+    #[derive(Debug)]
+    struct ConvolutionalLayer {
+        //tensor inputs
+        input: Vec<Vec<Vec<f64>>>,
+        //multiple kernals per conv layer, will only be using square kernals
+        kernals: Vec<Vec<Vec<f64>>>,
+        stride: usize,
+        //a tensor that stores the feature maps resulted from the kernals
+        output_feature_map: Vec<Vec<Vec<f64>>>,
+    }
+
+    #[derive(Debug)]
+    struct PoolingLayer {
+        //will be using only squares as well
+        pooling_window: usize,
+        stride: usize,
+        pooling_type: PoolingType,
+    }
+
+    #[derive(Debug)]
+    struct ConvolutionBlock {
+        conv_layer: ConvolutionalLayer,
+        pooling_layer: PoolingLayer,
+    }
+
+    #[derive(Debug)]
+    enum PoolingType {
+        MaxPooling,
+        AveragePooling,
+    }
+
+    //intialize the layers, backpropgation will use the vec storing Convblocks with &mut
+    impl ConvolutionBlock {
+        fn new(
+            input: &Vec<Vec<Vec<f64>>>,
+            number_of_kernals: usize,
+            kernal_size: usize,
+            kernal_stride: usize,
+            pooling_stride: usize,
+            pooling_window: usize,
+            pooling_type: PoolingType,
+        ) -> Self {
+            let mut kernals: Vec<Vec<Vec<f64>>> = Vec::new();
+            for i in 0..number_of_kernals {
+                //remember: fn push(&mut self)
+                kernals.push(array::create_matrix(kernal_size.clone(), kernal_size, true));
+            }
+
+            let mut output_feature_map: Vec<Vec<Vec<f64>>> = Vec::new();
+
+            //kernals.len() == number_of_kernals
+            for i in 0..kernals.len() {
+                output_feature_map.push(create_feature_map(&input[0], &kernals[i], &kernal_stride));
+            }
+
+            ConvolutionBlock {
+                conv_layer: ConvolutionalLayer {
+                    //if i want to access the input after training for whatever reason
+                    input: input.clone(),
+                    kernals,
+                    stride: kernal_stride,
+                    output_feature_map,
+                },
+                pooling_layer: PoolingLayer {
+                    pooling_window,
+                    stride: pooling_stride,
+                    pooling_type,
+                },
+            }
+        }
+    }
+
+    fn create_feature_map(
+        input: &Vec<Vec<f64>>,
+        kernal: &Vec<Vec<f64>>,
+        stride: &usize,
+    ) -> Vec<Vec<f64>> {
+        assert!(stride.clone() > 0 as usize);
+
+        let mut feature_map: Vec<Vec<f64>> =
+            vec![
+                vec![0.0; (input[0].len() - kernal[0].len()) / stride + 1];
+                (input.len() - kernal.len()) / stride + 1
+            ];
+
+        for i in 0..feature_map.len() {
+            for j in 0..feature_map[0].len() {
+                feature_map[i][j] = element_wise_dot_product(input, kernal, i * stride, j * stride);
+            }
+        }
+
+        feature_map
+    }
+
+    fn element_wise_dot_product(
+        input: &Vec<Vec<f64>>,
+        kernal: &Vec<Vec<f64>>,
+        row_index_after_stride: usize,
+        col_index_after_stride: usize,
+    ) -> f64 {
+        let mut dot_product: f64 = 0.0;
+
+        for i in 0..kernal.len() {
+            for j in 0..kernal[0].len() {
+                dot_product +=
+                    kernal[i][j] * input[i + row_index_after_stride][j + col_index_after_stride];
+            }
+        }
+
+        dot_product
+    }
 }
