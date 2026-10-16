@@ -140,7 +140,7 @@ pub mod matrix_arithmetic {
 pub mod functions {
     //for scope reasons
     use super::matrix_arithmetic::*;
-    use crate::ml::Layer;
+    use crate::ml::neural_network::Layer;
     use rand::seq::SliceRandom;
     use rand::*;
     use std::f64::consts::E as e;
