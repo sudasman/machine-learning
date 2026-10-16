@@ -1,0 +1,22 @@
+//get dataset off of kaggle
+//conv layer: use filters (dot product, element wise) (negative -> dark to light, positive -> light to dark)
+//Output dimension for kernal = ((N-K)/S) + 1 -> N: input dimension(X/Y), K: kernal dimension(X/Y), S: stride
+//with padding (n+2p-k)/s + 1
+//the input layer will be a 2d vector with entries representing each pixel in the image, from 0-256 greyscale
+//training is same process
+
+
+// Convolutional layers learn filters that detect features such as edges, curves, and patterns.
+// Backpropagation optimizes the filter weights to reduce prediction error.
+// Feature maps store numerical information about the detected features.
+// Fully connected layers combine these features to classify the digit.
+// Both parts train together to improve predictions.
+// Testing on unseen data checks whether the model generalizes well.
+
+//will need to refactor current code
+//possible solution: in ml.rs, create two modules, one for the regular neural network, the second for the convolutional neural network
+
+//flatten the 3d output matrix after the convolutional layer into a 1d to feed into the neural net
+//a second conv layer, however, can be included to detect deeper patterns -> it would take the 3d matrix outputted by the first conv layer
+
+//if our conv layer is deep, we want padding to avoid our feature map from becoming too small
