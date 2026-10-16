@@ -1,6 +1,8 @@
 use std::fs;
 
-pub fn read_u32(bytes: &[u8], offset: usize) -> u32 {
+fn read_u32(bytes: &[u8], offset: usize) -> u32 {
+    //relative addressing
+    //be -> big endian -> most significant byte first (reading left to right), little endian is the opposite
     u32::from_be_bytes([
         bytes[offset],
         bytes[offset + 1],
@@ -10,7 +12,7 @@ pub fn read_u32(bytes: &[u8], offset: usize) -> u32 {
 }
 
 //Vec<Vec<Vec<(f64, f64, f64)>>> for rgb
-pub fn load_images(path: &str) -> Vec<Vec<Vec<f64>>> {
+fn load_images(path: &str) -> Vec<Vec<Vec<f64>>> {
     let bytes: Vec<u8> = fs::read(path).expect("path not found");
     //assume correct file structure
     //idx3 structure -> byte 0: magic number -> byte 4: number of images -> byte 8: rows -> byte 12 columns, bytes 0-16: header
@@ -30,7 +32,7 @@ pub fn load_images(path: &str) -> Vec<Vec<Vec<f64>>> {
                 .chunks(columns)
                 .map(|row| {
                     row.iter()
-                    //brightness
+                        //brightness
                         .map(|&pixel| pixel as f64 / 255.0)
                         .collect::<Vec<f64>>()
                 })
@@ -39,12 +41,63 @@ pub fn load_images(path: &str) -> Vec<Vec<Vec<f64>>> {
         .collect::<Vec<Vec<Vec<f64>>>>()
 }
 
-pub fn load_dataset() {
-    let images = load_images("datasets/mnist/train-images.idx3-ubyte");
-    // dbg!(images);
+//**maybe bug in the future, the label datatype is a float**
+fn load_labels(path: &str) -> Vec<Vec<f64>> {
+    let bytes = fs::read(path).expect("path not found");
+    //remember: take(usize) stops the iterator at usize
+    bytes[8..]
+        .iter()
+        .take(read_u32(&bytes, 4) as usize)
+        .map(|&label| vec![label as f64])
+        .collect::<Vec<Vec<f64>>>()
+}
 
-    for row in &images[0] {
-        let line: String = row.iter().map(|&p| if p > 0.5 { '#' } else { '.' }).collect();
-        println!("{}", line);
+pub fn show_sample_image(
+    images: &Vec<Vec<Vec<f64>>>,
+    labels: &Vec<Vec<f64>>,
+    single_n: usize,
+    multiple_n: Option<usize>,
+) {
+    if let Some(n) = multiple_n {
+        for i in 0..n {
+            //images is a tensor
+            //either &images[n] or explicitly using images[n].iter() works
+            for rows in images[i].iter() {
+                let line = rows
+                    .iter()
+                    .map(|&pixel| if pixel > 0.5 { "*" } else { " " })
+                    .collect::<String>();
+                println!("{}", line);
+            }
+            println!("Number: {}", labels[i][0]);
+        }
+    } else {
+        for rows in images[single_n].iter() {
+            let line = rows
+                .iter()
+                .map(|&pixel| if pixel > 0.5 { "*" } else { " " })
+                .collect::<String>();
+            println!("{}", line);
+        }
+        println!("Number: {}", labels[single_n][0]);
     }
+}
+
+//task for tomorrow: seperate into training and testing sets (return type be tuple)
+pub fn load_dataset() -> (
+    (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
+    (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
+) {
+    //t10k -> testing set, idx3 stores tensors, idx1 -> 1D
+
+    let training_images: Vec<Vec<Vec<f64>>> = load_images("datasets/mnist/train-images.idx3-ubyte");
+    let training_labels: Vec<Vec<f64>> = load_labels("datasets/mnist/train-labels.idx1-ubyte");
+
+    let testing_images: Vec<Vec<Vec<f64>>> = load_images("datasets/mnist/t10k-images.idx3-ubyte");
+    let testing_labels: Vec<Vec<f64>> = load_labels("datasets/mnist/t10k-labels.idx1-ubyte");
+
+    (
+        (training_images, training_labels),
+        (testing_images, testing_labels),
+    )
 }
