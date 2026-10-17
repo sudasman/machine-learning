@@ -150,6 +150,9 @@ pub mod functions {
         1.0 / (1.0 + base.powf(-z))
     }
 
+    pub fn relu (num: f64) -> f64{
+        num.max(0.0)
+    }
     //Use Case: Multi Class Classification (Number Recognition)
     pub fn softmax(weighted_sum_matrix: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
         let mut matrix = vec![vec![0.0; weighted_sum_matrix[0].len()]; weighted_sum_matrix.len()];
