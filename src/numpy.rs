@@ -22,6 +22,12 @@ pub mod matrix_arithmetic {
         vec![vec![0.0; m]; n]
     }
 
+    pub fn cnn_bias_matrix(n: usize) -> Vec<f64>{
+        let mut rng = rand::rng();
+        
+        (0..n).map(|_| rng.random_range(-1.0..=1.0)).collect::<Vec<f64>>()
+    }
+
     pub fn matrix_multiplication(
         matrix1: &Vec<Vec<f64>>,
         matrix2: &Vec<Vec<f64>>,
