@@ -35,6 +35,10 @@ pub mod neural_network {
         }
     }
 
+    pub enum ActivationFunction {
+        Sigmoid,
+        Softmax,
+    }
     pub struct ModelSettings {
         //number_of_neurons_hidden_layer.len() == number_of_hidden_layers
         pub number_of_neurons_hidden_layer: Vec<usize>,
@@ -141,7 +145,10 @@ pub mod neural_network {
             number_of_hidden_layers,
         );
         let output_layer: Layer = Layer::new(
-            apply_activation_function(model[model.len() - 1].weighted_sum_matrix.clone()),
+            apply_activation_function(
+                ActivationFunction::Sigmoid,
+                model[model.len() - 1].weighted_sum_matrix.clone(),
+            ),
             1,
         );
         model.push(output_layer);
@@ -159,7 +166,10 @@ pub mod neural_network {
 
         for i in 0..*number_of_hidden_layers {
             let hidden_layer: Layer = Layer::new(
-                apply_activation_function(layers[layers.len() - 1].weighted_sum_matrix.clone()),
+                apply_activation_function(
+                    ActivationFunction::Sigmoid,
+                    layers[layers.len() - 1].weighted_sum_matrix.clone(),
+                ),
                 number_of_neurons_hidden_layer[i],
             );
 
@@ -178,15 +188,28 @@ pub mod neural_network {
         )
     }
 
-    pub fn apply_activation_function(weighted_sum_matrix: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-        weighted_sum_matrix
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|value| function::sigmoid(*value))
-                    .collect::<Vec<f64>>()
-            })
-            .collect::<Vec<Vec<f64>>>()
+    pub fn apply_activation_function(
+        activation_type: ActivationFunction,
+        weighted_sum_matrix: Vec<Vec<f64>>,
+    ) -> Vec<Vec<f64>> {
+        let mut res: Vec<Vec<f64>> = Vec::new();
+        match activation_type {
+            ActivationFunction::Sigmoid => {
+                res = weighted_sum_matrix
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|value| function::sigmoid(*value))
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect::<Vec<Vec<f64>>>()
+            }
+            ActivationFunction::Softmax => {
+                res = function::softmax(&weighted_sum_matrix);
+            }
+            _ => (),
+        }
+        res
     }
 
     pub fn forward_pass(model: &mut Vec<Layer>, batch: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
@@ -199,7 +222,10 @@ pub mod neural_network {
                 layer.weighted_sum_matrix.clone()
             } else {
                 //new input layer is just the weighted sum matrix after a activation fucntion of the previous layer
-                apply_activation_function(layer.weighted_sum_matrix.clone())
+                apply_activation_function(
+                    ActivationFunction::Sigmoid,
+                    layer.weighted_sum_matrix.clone(),
+                )
             };
         }
         let prediction = input.clone();
@@ -298,6 +324,7 @@ pub mod convolutional_neural_network {
     use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
+    use std::f64::{MAX, NEG_INFINITY};
 
     #[derive(Debug)]
     struct ConvolutionalLayer {
@@ -309,7 +336,7 @@ pub mod convolutional_neural_network {
         //a tensor that stores the feature maps resulted from the kernals
         output_feature_map: Vec<Vec<Vec<f64>>>,
         bias_matrix: Vec<f64>,
-        activation_function: ActivationFunction,
+        activation_function: ActivationFunctionCnn,
     }
 
     #[derive(Debug)]
@@ -333,7 +360,7 @@ pub mod convolutional_neural_network {
     }
 
     #[derive(Debug)]
-    enum ActivationFunction{
+    enum ActivationFunctionCnn {
         ReLu,
         //wont impl the rest for now
         LeakyReLu,
@@ -348,7 +375,7 @@ pub mod convolutional_neural_network {
             number_of_kernals: usize,
             kernal_size: usize,
             kernal_stride: usize,
-            activation_function: ActivationFunction,
+            activation_function: ActivationFunctionCnn,
             pooling_stride: usize,
             pooling_window: usize,
             pooling_type: PoolingType,
@@ -367,7 +394,7 @@ pub mod convolutional_neural_network {
             }
 
             let bias_matrix: Vec<f64> = array::cnn_bias_matrix(kernals.len());
-            
+
             ConvolutionBlock {
                 conv_layer: ConvolutionalLayer {
                     //if i want to access the input after training for whatever reason
@@ -385,7 +412,141 @@ pub mod convolutional_neural_network {
                 },
             }
         }
+
+        fn foward(&mut self, input: &Vec<Vec<Vec<f64>>>) {
+            self.conv_layer.input = input.clone();
+        }
     }
+
+    //the input for the next conv block will be:
+    //the pooling type(activation function(feature map + bias))
+    //create a vec representing the entire conv layer that will hold ConvBlocks
+    //forward pass will iterate through this vector
+    //the output of the convblock will be the input of the next convblock
+
+    fn add_bias_all_in_one(
+        feature_map: &Vec<Vec<Vec<f64>>>,
+        bias: &Vec<f64>,
+    ) -> Vec<Vec<Vec<f64>>> {
+        assert!(feature_map.len() == bias.len());
+        let mut res: Vec<Vec<Vec<f64>>> = Vec::new();
+
+        res = (0..bias.len())
+            .map(|index| {
+                feature_map[index]
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|&pixel| pixel + bias[index])
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect::<Vec<Vec<f64>>>()
+            })
+            .collect::<Vec<Vec<Vec<f64>>>>();
+
+        res
+    }
+
+    fn add_bias_all_for_loop(
+        feature_map: &Vec<Vec<f64>>,
+        bias: &Vec<f64>,
+        index: usize,
+    ) -> Vec<Vec<f64>> {
+        feature_map
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|&pixel| pixel + bias[index])
+                    .collect::<Vec<f64>>()
+            })
+            .collect::<Vec<Vec<f64>>>()
+    }
+
+    fn apply_activation_function_cnn(
+        activation_type: ActivationFunctionCnn,
+        input: &Vec<Vec<Vec<f64>>>,
+    ) -> Vec<Vec<Vec<f64>>> {
+        let mut res: Vec<Vec<Vec<f64>>> = Vec::new();
+        match activation_type {
+            ActivationFunctionCnn::ReLu => {
+                res = input
+                    .iter()
+                    .map(|channel| {
+                        channel
+                            .iter()
+                            .map(|row| {
+                                row.iter()
+                                    .map(|&pixel| function::relu(pixel))
+                                    .collect::<Vec<f64>>()
+                            })
+                            .collect::<Vec<Vec<f64>>>()
+                    })
+                    .collect::<Vec<Vec<Vec<f64>>>>()
+            }
+            //the rest not implemented yet
+            _ => (),
+        };
+        res
+    }
+
+    fn pool_feature_map(
+        pooling_type: PoolingType,
+        input: &Vec<Vec<Vec<f64>>>,
+        pooling_stride: &usize,
+        pooling_window: &usize,
+    ) -> Vec<Vec<Vec<f64>>> {
+        //we provide the guarentee that the pooling window is a square
+        assert!(*pooling_stride > 0 && *pooling_window > 1);
+        let mut new_feature_maps: Vec<Vec<Vec<f64>>> =
+            vec![
+                vec![
+                    vec![0.0; (input[0][0].len() - pooling_window) / pooling_stride + 1];
+                    (input[0].len() - pooling_window) / pooling_stride + 1
+                ];
+                input.len()
+            ];
+
+        match pooling_type {
+            PoolingType::MaxPooling => {
+                new_feature_maps = input
+                    .iter()
+                    .map(|channel| {
+                        (0..new_feature_maps.len())
+                            .map(|i| {
+                                (0..new_feature_maps[0].len())
+                                    .map(|j| {
+                                        channel[i * pooling_stride
+                                            ..i * pooling_stride + pooling_window]
+                                            //flat_map -> flatten + map
+                                            .iter()
+                                            .flat_map(|row| {
+                                                &row[j * pooling_stride
+                                                    ..j * pooling_stride + pooling_window]
+                                            })
+                                            //iter() has ref entries, .copied() has owned entries
+                                            .copied()
+                                            .fold(f64::NEG_INFINITY, f64::max)
+                                    })
+                                    .collect::<Vec<f64>>()
+                            })
+                            .collect::<Vec<Vec<f64>>>()
+                    })
+                    .collect::<Vec<Vec<Vec<f64>>>>()
+            }
+            PoolingType::AveragePooling => {}
+            _ => {}
+        }
+        //used as the input for the next conv block
+        new_feature_maps
+    }
+
+    fn cnn_forward_pass(model_cnn: &mut Vec<ConvolutionBlock>, batch: &Vec<Vec<Vec<f64>>>) {}
+
+    fn cnn_backward_pass() {}
+
+    fn forward_pass() {}
+
+    fn backward_pass() {}
 
     fn create_feature_map(
         input: &Vec<Vec<f64>>,
@@ -433,6 +594,4 @@ pub mod convolutional_neural_network {
 //then activation function is applied to the feature map after the bias is added
 //then combine into a channel
 
-//todo: 1. impl activation function: ReLu
-//      2. Bias
-//      3. impl pooling type
+//todo:  3. impl pooling type
