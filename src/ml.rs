@@ -308,6 +308,8 @@ pub mod convolutional_neural_network {
         stride: usize,
         //a tensor that stores the feature maps resulted from the kernals
         output_feature_map: Vec<Vec<Vec<f64>>>,
+        bias_matrix: Vec<f64>,
+        activation_function: ActivationFunction,
     }
 
     #[derive(Debug)]
@@ -330,6 +332,15 @@ pub mod convolutional_neural_network {
         AveragePooling,
     }
 
+    #[derive(Debug)]
+    enum ActivationFunction{
+        ReLu,
+        //wont impl the rest for now
+        LeakyReLu,
+        Elu,
+        Tanh,
+    }
+
     //intialize the layers, backpropgation will use the vec storing Convblocks with &mut
     impl ConvolutionBlock {
         fn new(
@@ -337,6 +348,7 @@ pub mod convolutional_neural_network {
             number_of_kernals: usize,
             kernal_size: usize,
             kernal_stride: usize,
+            activation_function: ActivationFunction,
             pooling_stride: usize,
             pooling_window: usize,
             pooling_type: PoolingType,
@@ -354,6 +366,7 @@ pub mod convolutional_neural_network {
                 output_feature_map.push(create_feature_map(&input[0], &kernals[i], &kernal_stride));
             }
 
+            let bias: Vec<f64> = array::create_matrix(1, kernals.len(), true);
             ConvolutionBlock {
                 conv_layer: ConvolutionalLayer {
                     //if i want to access the input after training for whatever reason
@@ -361,6 +374,8 @@ pub mod convolutional_neural_network {
                     kernals,
                     stride: kernal_stride,
                     output_feature_map,
+                    bias,
+                    activation_function,
                 },
                 pooling_layer: PoolingLayer {
                     pooling_window,
@@ -411,3 +426,12 @@ pub mod convolutional_neural_network {
         dot_product
     }
 }
+
+//add bias to each feature map
+//a kernal has its own bias (n kernals -> n biases)
+//then activation function is applied to the feature map after the bias is added
+//then combine into a channel
+
+//todo: 1. impl activation function: ReLu
+//      2. Bias
+//      3. impl pooling type
