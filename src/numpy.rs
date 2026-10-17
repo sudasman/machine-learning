@@ -22,10 +22,12 @@ pub mod matrix_arithmetic {
         vec![vec![0.0; m]; n]
     }
 
-    pub fn cnn_bias_matrix(n: usize) -> Vec<f64>{
+    pub fn cnn_bias_matrix(n: usize) -> Vec<f64> {
         let mut rng = rand::rng();
-        
-        (0..n).map(|_| rng.random_range(-1.0..=1.0)).collect::<Vec<f64>>()
+
+        (0..n)
+            .map(|_| rng.random_range(-1.0..=1.0))
+            .collect::<Vec<f64>>()
     }
 
     pub fn matrix_multiplication(
@@ -156,11 +158,11 @@ pub mod functions {
         1.0 / (1.0 + base.powf(-z))
     }
 
-    pub fn relu (num: f64) -> f64{
+    pub fn relu(num: f64) -> f64 {
         num.max(0.0)
     }
     //Use Case: Multi Class Classification (Number Recognition)
-    pub fn softmax(weighted_sum_matrix: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+    pub fn softmax(weighted_sum_matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
         let mut matrix = vec![vec![0.0; weighted_sum_matrix[0].len()]; weighted_sum_matrix.len()];
 
         let mut denominator_sum: f64 = 0.0;
