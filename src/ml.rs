@@ -366,7 +366,8 @@ pub mod convolutional_neural_network {
                 output_feature_map.push(create_feature_map(&input[0], &kernals[i], &kernal_stride));
             }
 
-            let bias: Vec<f64> = array::create_matrix(1, kernals.len(), true);
+            let bias_matrix: Vec<f64> = array::cnn_bias_matrix(kernals.len());
+            
             ConvolutionBlock {
                 conv_layer: ConvolutionalLayer {
                     //if i want to access the input after training for whatever reason
@@ -374,7 +375,7 @@ pub mod convolutional_neural_network {
                     kernals,
                     stride: kernal_stride,
                     output_feature_map,
-                    bias,
+                    bias_matrix,
                     activation_function,
                 },
                 pooling_layer: PoolingLayer {
