@@ -333,8 +333,6 @@ pub mod convolutional_neural_network {
         //multiple kernals per conv layer, will only be using square kernals
         kernals: Vec<Vec<Vec<f64>>>,
         stride: usize,
-        //a tensor that stores the feature maps resulted from the kernals
-        output_feature_map: Vec<Vec<Vec<f64>>>,
         bias_matrix: Vec<f64>,
         activation_function: ActivationFunctionCnn,
     }
@@ -348,18 +346,19 @@ pub mod convolutional_neural_network {
     }
 
     #[derive(Debug)]
-    struct ConvolutionBlock {
+    struct ConvolutionalBlock {
         conv_layer: ConvolutionalLayer,
         pooling_layer: PoolingLayer,
     }
 
-    #[derive(Debug)]
+    //hey future me, if you ever want to make this code more presentable, remove the amount of cloning with references
+    #[derive(Debug, Clone)]
     enum PoolingType {
         MaxPooling,
         AveragePooling,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     enum ActivationFunctionCnn {
         ReLu,
         //wont impl the rest for now
@@ -369,12 +368,12 @@ pub mod convolutional_neural_network {
     }
 
     //intialize the layers, backpropgation will use the vec storing Convblocks with &mut
-    impl ConvolutionBlock {
+    impl ConvolutionalBlock {
         fn new(
             input: &Vec<Vec<Vec<f64>>>,
             number_of_kernals: usize,
-            kernal_size: usize,
-            kernal_stride: usize,
+            kernal_size: &usize,
+            kernal_stride: &usize,
             activation_function: ActivationFunctionCnn,
             pooling_stride: usize,
             pooling_window: usize,
@@ -383,25 +382,17 @@ pub mod convolutional_neural_network {
             let mut kernals: Vec<Vec<Vec<f64>>> = Vec::new();
             for i in 0..number_of_kernals {
                 //remember: fn push(&mut self)
-                kernals.push(array::create_matrix(kernal_size.clone(), kernal_size, true));
-            }
-
-            let mut output_feature_map: Vec<Vec<Vec<f64>>> = Vec::new();
-
-            //kernals.len() == number_of_kernals
-            for i in 0..kernals.len() {
-                output_feature_map.push(create_feature_map(&input[0], &kernals[i], &kernal_stride));
+                kernals.push(array::create_matrix(*kernal_size, *kernal_size, true));
             }
 
             let bias_matrix: Vec<f64> = array::cnn_bias_matrix(kernals.len());
 
-            ConvolutionBlock {
+            ConvolutionalBlock {
                 conv_layer: ConvolutionalLayer {
                     //if i want to access the input after training for whatever reason
                     input: input.clone(),
                     kernals,
-                    stride: kernal_stride,
-                    output_feature_map,
+                    stride: *kernal_stride,
                     bias_matrix,
                     activation_function,
                 },
@@ -413,21 +404,32 @@ pub mod convolutional_neural_network {
             }
         }
 
-        fn foward(&mut self, input: &Vec<Vec<Vec<f64>>>) {
-            self.conv_layer.input = input.clone();
+        fn foward(
+            &mut self,
+            prev_input: &Vec<Vec<Vec<f64>>>,
+            activation_function: ActivationFunctionCnn,
+        ) {
+            match activation_function {
+                ActivationFunctionCnn::ReLu => {
+                    self.conv_layer.input = apply_activation_function_cnn(
+                        activation_function,
+                        &add_bias(
+                            &create_feature_map(
+                                &prev_input,
+                                &self.conv_layer.kernals,
+                                &self.conv_layer.stride,
+                            ),
+                            &self.conv_layer.bias_matrix,
+                        ),
+                    )
+                }
+                //the rest of the activation functions
+                _ => (),
+            };
         }
     }
 
-    //the input for the next conv block will be:
-    //the pooling type(activation function(feature map + bias))
-    //create a vec representing the entire conv layer that will hold ConvBlocks
-    //forward pass will iterate through this vector
-    //the output of the convblock will be the input of the next convblock
-
-    fn add_bias_all_in_one(
-        feature_map: &Vec<Vec<Vec<f64>>>,
-        bias: &Vec<f64>,
-    ) -> Vec<Vec<Vec<f64>>> {
+    fn add_bias(feature_map: &Vec<Vec<Vec<f64>>>, bias: &Vec<f64>) -> Vec<Vec<Vec<f64>>> {
         assert!(feature_map.len() == bias.len());
         let mut res: Vec<Vec<Vec<f64>>> = Vec::new();
 
@@ -445,21 +447,6 @@ pub mod convolutional_neural_network {
             .collect::<Vec<Vec<Vec<f64>>>>();
 
         res
-    }
-
-    fn add_bias_all_for_loop(
-        feature_map: &Vec<Vec<f64>>,
-        bias: &Vec<f64>,
-        index: usize,
-    ) -> Vec<Vec<f64>> {
-        feature_map
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|&pixel| pixel + bias[index])
-                    .collect::<Vec<f64>>()
-            })
-            .collect::<Vec<Vec<f64>>>()
     }
 
     fn apply_activation_function_cnn(
@@ -533,14 +520,64 @@ pub mod convolutional_neural_network {
                     })
                     .collect::<Vec<Vec<Vec<f64>>>>()
             }
-            PoolingType::AveragePooling => {}
+            PoolingType::AveragePooling => {
+                let n: f64 = pooling_window.pow(2) as f64;
+            }
             _ => {}
         }
         //used as the input for the next conv block
         new_feature_maps
     }
 
-    fn cnn_forward_pass(model_cnn: &mut Vec<ConvolutionBlock>, batch: &Vec<Vec<Vec<f64>>>) {}
+    pub fn init_cnn(
+        images: &Vec<Vec<Vec<f64>>>,
+        number_of_conv_blocks: usize,
+        number_of_kernals: usize,
+        kernal_size: Vec<usize>,
+        kernal_stride: Vec<usize>,
+        activation_type: ActivationFunctionCnn,
+        pooling_window: usize,
+        pooling_stride: usize,
+        pooling_type: PoolingType,
+    ) -> Vec<ConvolutionalBlock> {
+        //the indices of kernal_size and kernal_stride represent their respective kernal sizes and strides at that convolutional block
+        let mut convolutional_base: Vec<ConvolutionalBlock> = Vec::new();
+        //base, the next convolutional blocks will have different inputs
+        convolutional_base.push(ConvolutionalBlock::new(
+            images,
+            number_of_kernals,
+            &kernal_size[0],
+            &kernal_stride[0],
+            activation_type.clone(),
+            pooling_stride,
+            pooling_window,
+            pooling_type.clone(),
+        ));
+
+        for i in 1..number_of_conv_blocks {
+            let dummy_input: Vec<Vec<Vec<f64>>> = Vec::new();
+            convolutional_base.push(ConvolutionalBlock::new(
+                &dummy_input,
+                number_of_kernals,
+                &kernal_size[i],
+                &kernal_stride[i],
+                activation_type.clone(),
+                pooling_stride,
+                pooling_window,
+                pooling_type.clone(),
+            ));
+        }
+
+        convolutional_base
+    }
+
+    //forward pass will iterate over model_cnn and call forward at each iteration
+    //forward_pass will return the last output of which we will later flatten and feed into the neural net
+    fn cnn_forward_pass(
+        model_cnn: &mut Vec<ConvolutionalBlock>,
+        batch: &Vec<Vec<Vec<f64>>>,
+    ) -> Vec<Vec<f64>> {
+    }
 
     fn cnn_backward_pass() {}
 
@@ -549,25 +586,42 @@ pub mod convolutional_neural_network {
     fn backward_pass() {}
 
     fn create_feature_map(
-        input: &Vec<Vec<f64>>,
-        kernal: &Vec<Vec<f64>>,
+        input: &Vec<Vec<Vec<f64>>>,
+        kernals: &Vec<Vec<Vec<f64>>>,
         stride: &usize,
-    ) -> Vec<Vec<f64>> {
+    ) -> Vec<Vec<Vec<f64>>> {
         assert!(stride.clone() > 0 as usize);
 
-        let mut feature_map: Vec<Vec<f64>> =
+        let mut feature_maps: Vec<Vec<Vec<f64>>> =
             vec![
-                vec![0.0; (input[0].len() - kernal[0].len()) / stride + 1];
-                (input.len() - kernal.len()) / stride + 1
+                vec![
+                    vec![0.0; (input[0][0].len() - kernals[0][0].len()) / stride + 1];
+                    (input[0].len() - kernals[0].len()) / stride + 1
+                ];
+                input.len()
             ];
 
-        for i in 0..feature_map.len() {
-            for j in 0..feature_map[0].len() {
-                feature_map[i][j] = element_wise_dot_product(input, kernal, i * stride, j * stride);
-            }
-        }
-
-        feature_map
+        //input.len() == kernals.len()
+        input
+            .iter()
+            .enumerate()
+            .map(|(i, channel)| {
+                (0..feature_maps[0].len())
+                    .map(|j| {
+                        (0..feature_maps[0][0].len())
+                            .map(|k| {
+                                element_wise_dot_product(
+                                    channel,
+                                    &kernals[i],
+                                    j * stride,
+                                    k * stride,
+                                )
+                            })
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect::<Vec<Vec<f64>>>()
+            })
+            .collect::<Vec<Vec<Vec<f64>>>>()
     }
 
     fn element_wise_dot_product(
@@ -584,14 +638,6 @@ pub mod convolutional_neural_network {
                     kernal[i][j] * input[i + row_index_after_stride][j + col_index_after_stride];
             }
         }
-
         dot_product
     }
 }
-
-//add bias to each feature map
-//a kernal has its own bias (n kernals -> n biases)
-//then activation function is applied to the feature map after the bias is added
-//then combine into a channel
-
-//todo:  3. impl pooling type
