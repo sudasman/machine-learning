@@ -1,7 +1,21 @@
+pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display>{
+    fn init_model(model: T){}
+
+    fn eval_model(model: T){}
+}
+
 pub mod neural_network {
     use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
+    use super::*;
+
+    impl <T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<Layer> {
+        fn init_model(model: T) {}
+
+        fn eval_model(model: T) {}
+    }
+
     #[derive(Debug)]
     pub struct Layer {
         pub neurons: usize,
@@ -573,10 +587,11 @@ pub mod convolutional_neural_network {
 
     //forward pass will iterate over model_cnn and call forward at each iteration
     //forward_pass will return the last output of which we will later flatten and feed into the neural net
+    //currently, the conv part is fully made, next step is training
     fn cnn_forward_pass(
         model_cnn: &mut Vec<ConvolutionalBlock>,
         batch: &Vec<Vec<Vec<f64>>>,
-    ) -> Vec<Vec<f64>> {
+    ) -> Vec<Vec<Vec<f64>>> {
     }
 
     fn cnn_backward_pass() {}
