@@ -339,6 +339,13 @@ pub mod convolutional_neural_network {
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
     use std::f64::{MAX, NEG_INFINITY};
+    use super::*;
+
+    impl <T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<ConvolutionalBlock> {
+        fn init_model(model: T) {}
+
+        fn eval_model(model: T) {}
+    }
 
     #[derive(Debug)]
     struct ConvolutionalLayer {
@@ -418,7 +425,7 @@ pub mod convolutional_neural_network {
             }
         }
 
-        fn foward(
+        fn forward(
             &mut self,
             prev_input: &Vec<Vec<Vec<f64>>>,
             activation_function: ActivationFunctionCnn,
@@ -585,15 +592,30 @@ pub mod convolutional_neural_network {
         convolutional_base
     }
 
-    //forward pass will iterate over model_cnn and call forward at each iteration
-    //forward_pass will return the last output of which we will later flatten and feed into the neural net
-    //currently, the conv part is fully made, next step is training
+   //now faltten
+   //feed it to the neural net
+   //get a prediction -> calculate loss
+   //back propagate all the way through to the convolutional parts
+   //parameters to optimize -> Conv: Kernals + Bias, Neural Net: Weight + Bias
+
+   //todo: learn how you can optimize the parameters in the convolutional base
     fn cnn_forward_pass(
-        model_cnn: &mut Vec<ConvolutionalBlock>,
+        convolutional_base: &mut Vec<ConvolutionalBlock>,
         batch: &Vec<Vec<Vec<f64>>>,
+        activation_function: ActivationFunctionCnn,
     ) -> Vec<Vec<Vec<f64>>> {
+        let mut input = batch.clone();
+        let n: usize = convolutional_base.len() - 1;
+        for conv_block in convolutional_base.iter_mut() {
+            conv_block.forward(&input, activation_function.clone());
+            input = conv_block.conv_layer.input.clone();
+        }
+
+        let output = input.clone();
+        output
     }
 
+    
     fn cnn_backward_pass() {}
 
     fn forward_pass() {}
