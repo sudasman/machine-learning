@@ -614,9 +614,7 @@ pub mod convolutional_neural_network {
 
         convolutional_base
     }
-
-    //now faltten
-    //feed it to the neural net
+    
     //get a prediction -> calculate loss
     //back propagate all the way through to the convolutional parts
     //parameters to optimize -> Conv: Kernals + Bias, Neural Net: Weight + Bias
@@ -647,6 +645,7 @@ pub mod convolutional_neural_network {
 
     fn train_with_flattened_data(
         cnn_output: &Vec<Vec<Vec<f64>>>,
+        labels: &Vec<Vec<f64>>,
         convolutional_base: &mut Vec<ConvolutionalBlock>,
         train_input: &Vec<Vec<Vec<f64>>>,
     ) {
@@ -663,17 +662,28 @@ pub mod convolutional_neural_network {
             epochs: 1000,
         };
 
+        let flattened: Vec<Vec<f64>> = flatten(&cnn_forward_pass(
+            convolutional_base,
+            train_input,
+            ActivationFunctionCnn::ReLu,
+        ));
         let mut model: Vec<neural_network::Layer> = neural_network::init_model(
             &model_settings.number_of_neurons_hidden_layer,
-            neural_network::init_input_layer(&flatten(&cnn_forward_pass(
-                convolutional_base,
-                train_input,
-                ActivationFunctionCnn::ReLu,
-            ))),
+            neural_network::init_input_layer(&flattened),
             &model_settings.number_of_hidden_layers,
         );
 
-        neural_network::train_model()
+        neural_network::train_model(
+            &(flattened, labels.clone()),
+            &mut model,
+            model_settings.learning_rate,
+            model_settings.epochs,
+            model_settings.batch_size,
+            None,
+            Some(LossFunctionCnn::CrossEntropyLoss),
+        );
+
+        // neural_network::test_model();
     }
 
     fn cnn_backward_pass() {}
