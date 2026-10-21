@@ -221,7 +221,7 @@ pub mod functions {
         total_loss / actual_value.len() as f64
     }
 
-    pub fn stochastic_gradient_descent(
+    pub fn gradient_descent(
         model: &mut Vec<Layer>,
         prediction: &Vec<Vec<f64>>,
         actual: &Vec<Vec<f64>>,
@@ -268,6 +268,8 @@ pub mod functions {
             }
         }
     }
+
+    pub fn gradient_descent_cnn(){}
 
     pub fn shuffle_dataset(
         training_dataset: &Vec<Vec<f64>>,
