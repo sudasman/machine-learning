@@ -4,5 +4,3 @@ fn main() {
     // housing_price_predictor::new();
     number_recognition::new();
 }
-
-//JUNCTION LAST YEAR BUSINESS CASE EXAM
