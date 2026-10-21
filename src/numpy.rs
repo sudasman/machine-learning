@@ -148,7 +148,11 @@ pub mod matrix_arithmetic {
 pub mod functions {
     //for scope reasons
     use super::matrix_arithmetic::*;
-    use crate::ml::neural_network::Layer;
+    use crate::ml::{
+        convolutional_neural_network,
+        neural_network::{self, Layer},
+    };
+
     use rand::seq::SliceRandom;
     use rand::*;
     use std::f64::consts::E as e;
@@ -177,6 +181,25 @@ pub mod functions {
         matrix
     }
 
+    pub fn use_loss_function(
+        data: (&Vec<Vec<f64>>, &Vec<Vec<f64>>),
+        loss_function: &Option<neural_network::LossFunction>,
+        loss_function_cnn: &Option<convolutional_neural_network::LossFunctionCnn>,
+    ) -> f64 {
+        if let Some(loss_function) = loss_function {
+            match loss_function {
+                neural_network::LossFunction::Mse => mse(data.0, data.1),
+            }
+        } else if let Some(loss_function_cnn) = loss_function_cnn {
+            match loss_function_cnn {
+                convolutional_neural_network::LossFunctionCnn::CrossEntropyLoss => {
+                    cross_entropy_loss(data.0, data.1)
+                }
+            }
+        } else {
+            panic!("No loss function specified");
+        }
+    }
     pub fn mse(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
         let sum: f64 = prediction
             .iter()
@@ -185,6 +208,17 @@ pub mod functions {
             .map(|(row1, row2)| (row1[0] - row2[0]).powi(2))
             .sum();
         sum / prediction.len() as f64
+    }
+
+    pub fn cross_entropy_loss(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
+        let mut total_loss: f64 = 0.0;
+
+        //prediction is a 1d vector with a length of 10 where each index represents the number it predicted
+        for (prediction, label) in prediction.iter().zip(actual_value) {
+            total_loss -= prediction[label[0] as usize].max(1e-15).ln();
+        }
+
+        total_loss / actual_value.len() as f64
     }
 
     pub fn stochastic_gradient_descent(
