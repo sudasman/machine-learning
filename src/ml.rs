@@ -1,16 +1,16 @@
-pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display>{
-    fn init_model(model: T){}
+pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display> {
+    fn init_model(model: T) {}
 
-    fn eval_model(model: T){}
+    fn eval_model(model: T) {}
 }
 
 pub mod neural_network {
+    use super::*;
     use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
-    use super::*;
 
-    impl <T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<Layer> {
+    impl<T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<Layer> {
         fn init_model(model: T) {}
 
         fn eval_model(model: T) {}
@@ -49,10 +49,17 @@ pub mod neural_network {
         }
     }
 
+    #[derive(Debug, Clone)]
     pub enum ActivationFunction {
         Sigmoid,
         Softmax,
     }
+
+    #[derive(Debug, Clone)]
+    pub enum LossFunction {
+        Mse,
+    }
+
     pub struct ModelSettings {
         //number_of_neurons_hidden_layer.len() == number_of_hidden_layers
         pub number_of_neurons_hidden_layer: Vec<usize>,
@@ -111,6 +118,8 @@ pub mod neural_network {
         learning_rate: f64,
         epochs: usize,
         batch_size: usize,
+        loss_function: Option<LossFunction>,
+        loss_function_cnn: Option<convolutional_neural_network::LossFunctionCnn>,
     ) -> Vec<f64> {
         assert!(batch_size > 0 && batch_size <= data.0.len());
         let mut cost_history: Vec<f64> = Vec::new();
@@ -129,7 +138,11 @@ pub mod neural_network {
 
                 let prediction = forward_pass(model, &training_batch);
 
-                total += function::mse(&prediction, &actual_batch);
+                total += function::use_loss_function(
+                    (&prediction, &actual_batch),
+                    &loss_function,
+                    &loss_function_cnn,
+                );
                 backward_pass(model, &prediction, &actual_batch, learning_rate);
                 batches += 1;
             }
@@ -335,13 +348,15 @@ pub mod neural_network {
 }
 
 pub mod convolutional_neural_network {
+    use super::*;
     use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
     use std::f64::{MAX, NEG_INFINITY};
-    use super::*;
 
-    impl <T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<ConvolutionalBlock> {
+    impl<T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T>
+        for Vec<ConvolutionalBlock>
+    {
         fn init_model(model: T) {}
 
         fn eval_model(model: T) {}
@@ -380,7 +395,7 @@ pub mod convolutional_neural_network {
     }
 
     #[derive(Debug, Clone)]
-    enum ActivationFunctionCnn {
+    pub enum ActivationFunctionCnn {
         ReLu,
         //wont impl the rest for now
         LeakyReLu,
@@ -388,7 +403,15 @@ pub mod convolutional_neural_network {
         Tanh,
     }
 
+    #[derive(Debug, Clone)]
+    pub enum LossFunctionCnn {
+        CrossEntropyLoss,
+    }
+
     //intialize the layers, backpropgation will use the vec storing Convblocks with &mut
+    //note: padding not implemented
+    //neither is a fully rgb input
+    //idea for rgb -> use tuple to represent rgb where every pixel is a 3 tuple
     impl ConvolutionalBlock {
         fn new(
             input: &Vec<Vec<Vec<f64>>>,
@@ -592,30 +615,67 @@ pub mod convolutional_neural_network {
         convolutional_base
     }
 
-   //now faltten
-   //feed it to the neural net
-   //get a prediction -> calculate loss
-   //back propagate all the way through to the convolutional parts
-   //parameters to optimize -> Conv: Kernals + Bias, Neural Net: Weight + Bias
+    //now faltten
+    //feed it to the neural net
+    //get a prediction -> calculate loss
+    //back propagate all the way through to the convolutional parts
+    //parameters to optimize -> Conv: Kernals + Bias, Neural Net: Weight + Bias
 
-   //todo: learn how you can optimize the parameters in the convolutional base
+    //todo: learn how you can optimize the parameters in the convolutional base
     fn cnn_forward_pass(
         convolutional_base: &mut Vec<ConvolutionalBlock>,
-        batch: &Vec<Vec<Vec<f64>>>,
+        train_input: &Vec<Vec<Vec<f64>>>,
         activation_function: ActivationFunctionCnn,
     ) -> Vec<Vec<Vec<f64>>> {
-        let mut input = batch.clone();
+        let mut input = train_input.clone();
         let n: usize = convolutional_base.len() - 1;
         for conv_block in convolutional_base.iter_mut() {
             conv_block.forward(&input, activation_function.clone());
             input = conv_block.conv_layer.input.clone();
         }
 
-        let output = input.clone();
-        output
+        let cnn_output = input.clone();
+        cnn_output
     }
 
-    
+    fn flatten(output: &Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>> {
+        output
+            .iter()
+            .map(|image| image.iter().flatten().cloned().collect::<Vec<f64>>())
+            .collect::<Vec<Vec<f64>>>()
+    }
+
+    fn train_with_flattened_data(
+        cnn_output: &Vec<Vec<Vec<f64>>>,
+        convolutional_base: &mut Vec<ConvolutionalBlock>,
+        train_input: &Vec<Vec<Vec<f64>>>,
+    ) {
+        //1. forward pass through the neural net
+        //2. make prediction
+        //3. calculate loss
+        //4. this function will then be uesd in the back propagation fn for training
+
+        let model_settings: neural_network::ModelSettings = neural_network::ModelSettings {
+            number_of_neurons_hidden_layer: vec![5],
+            number_of_hidden_layers: 1,
+            learning_rate: 0.01,
+            batch_size: 36,
+            epochs: 1000,
+        };
+
+        let mut model: Vec<neural_network::Layer> = neural_network::init_model(
+            &model_settings.number_of_neurons_hidden_layer,
+            neural_network::init_input_layer(&flatten(&cnn_forward_pass(
+                convolutional_base,
+                train_input,
+                ActivationFunctionCnn::ReLu,
+            ))),
+            &model_settings.number_of_hidden_layers,
+        );
+
+        neural_network::train_model()
+    }
+
     fn cnn_backward_pass() {}
 
     fn forward_pass() {}

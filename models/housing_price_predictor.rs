@@ -44,6 +44,8 @@ pub fn new() {
         model_settings.learning_rate,
         model_settings.epochs,
         model_settings.batch_size,
+        Some(neural_network::LossFunction::Mse),
+        None,
     ));
 
     neural_network::test_model(&mut model, &split_dataset.1, 219000.0, 935000.0, 15000.0);

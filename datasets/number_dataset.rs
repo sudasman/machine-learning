@@ -41,7 +41,7 @@ fn load_images(path: &str) -> Vec<Vec<Vec<f64>>> {
         .collect::<Vec<Vec<Vec<f64>>>>()
 }
 
-//**maybe bug in the future, the label datatype is a float**
+//**maybe bug in the future, the label datatype is a float (originally u8)**
 fn load_labels(path: &str) -> Vec<Vec<f64>> {
     let bytes = fs::read(path).expect("path not found");
     //remember: take(usize) stops the iterator at usize
