@@ -153,7 +153,7 @@ pub mod neural_network {
                     &loss_function,
                     &loss_function_cnn,
                 );
-                backward_pass(model, &prediction, &actual_batch, learning_rate);
+                _ = backward_pass(model, &prediction, &actual_batch, learning_rate);
                 batches += 1;
             }
 
@@ -269,13 +269,13 @@ pub mod neural_network {
         prediction
     }
 
-    fn backward_pass(
+    pub fn backward_pass(
         model: &mut Vec<Layer>,
         prediction: &Vec<Vec<f64>>,
         actual: &Vec<Vec<f64>>,
         learning_rate: f64,
-    ) {
-        function::gradient_descent(model, prediction, actual, learning_rate);
+    ) -> Vec<Vec<f64>> {
+        function::gradient_descent(model, prediction, actual, learning_rate)
     }
 
     pub fn train_test_split(
@@ -395,6 +395,8 @@ pub mod convolutional_neural_network {
     struct ConvolutionalBlock {
         conv_layer: ConvolutionalLayer,
         pooling_layer: PoolingLayer,
+        //used for optimization
+        cached_prev_input: Vec<Vec<Vec<f64>>>,
     }
 
     //hey future me, if you ever want to make this code more presentable, remove the amount of cloning with references
@@ -425,16 +427,16 @@ pub mod convolutional_neural_network {
     impl ConvolutionalBlock {
         fn new(
             input: &Vec<Vec<Vec<f64>>>,
-            number_of_kernals: usize,
+            number_of_kernals: &usize,
             kernal_size: &usize,
             kernal_stride: &usize,
-            activation_function: ActivationFunctionCnn,
-            pooling_stride: usize,
-            pooling_window: usize,
-            pooling_type: PoolingType,
+            activation_function: &ActivationFunctionCnn,
+            pooling_stride: &usize,
+            pooling_window: &usize,
+            pooling_type: &PoolingType,
         ) -> Self {
             let mut kernals: Vec<Vec<Vec<f64>>> = Vec::new();
-            for i in 0..number_of_kernals {
+            for i in 0..*number_of_kernals {
                 //remember: fn push(&mut self)
                 kernals.push(array::create_matrix(*kernal_size, *kernal_size, true));
             }
@@ -445,24 +447,27 @@ pub mod convolutional_neural_network {
                 conv_layer: ConvolutionalLayer {
                     //if i want to access the input after training for whatever reason
                     input: input.clone(),
-                    kernals,
+                    kernals: (*kernals).to_vec(),
                     stride: *kernal_stride,
-                    bias_matrix,
-                    activation_function,
+                    bias_matrix: (*bias_matrix).to_vec(),
+                    activation_function: activation_function.clone(),
                 },
                 pooling_layer: PoolingLayer {
-                    pooling_window,
-                    stride: pooling_stride,
-                    pooling_type,
+                    pooling_window: *pooling_window,
+                    stride: *pooling_stride,
+                    pooling_type: pooling_type.clone(),
                 },
+                //dummy vec
+                cached_prev_input: Vec::new(),
             }
         }
 
         fn forward(
             &mut self,
             prev_input: &Vec<Vec<Vec<f64>>>,
-            activation_function: ActivationFunctionCnn,
+            activation_function: &ActivationFunctionCnn,
         ) {
+            self.cached_prev_input = prev_input.clone();
             match activation_function {
                 ActivationFunctionCnn::ReLu => {
                     self.conv_layer.input = apply_activation_function_cnn(
@@ -504,7 +509,7 @@ pub mod convolutional_neural_network {
     }
 
     fn apply_activation_function_cnn(
-        activation_type: ActivationFunctionCnn,
+        activation_type: &ActivationFunctionCnn,
         input: &Vec<Vec<Vec<f64>>>,
     ) -> Vec<Vec<Vec<f64>>> {
         let mut res: Vec<Vec<Vec<f64>>> = Vec::new();
@@ -531,7 +536,7 @@ pub mod convolutional_neural_network {
     }
 
     fn pool_feature_map(
-        pooling_type: PoolingType,
+        pooling_type: &PoolingType,
         input: &Vec<Vec<Vec<f64>>>,
         pooling_stride: &usize,
         pooling_window: &usize,
@@ -585,40 +590,40 @@ pub mod convolutional_neural_network {
 
     pub fn init_cnn(
         images: &Vec<Vec<Vec<f64>>>,
-        number_of_conv_blocks: usize,
-        number_of_kernals: usize,
-        kernal_size: Vec<usize>,
-        kernal_stride: Vec<usize>,
-        activation_type: ActivationFunctionCnn,
-        pooling_window: usize,
-        pooling_stride: usize,
-        pooling_type: PoolingType,
+        number_of_conv_blocks: &usize,
+        number_of_kernals: &usize,
+        kernal_size: &Vec<usize>,
+        kernal_stride: &Vec<usize>,
+        activation_type: &ActivationFunctionCnn,
+        pooling_window: &usize,
+        pooling_stride: &usize,
+        pooling_type: &PoolingType,
     ) -> Vec<ConvolutionalBlock> {
         //the indices of kernal_size and kernal_stride represent their respective kernal sizes and strides at that convolutional block
         let mut convolutional_base: Vec<ConvolutionalBlock> = Vec::new();
         //base, the next convolutional blocks will have different inputs
         convolutional_base.push(ConvolutionalBlock::new(
-            images,
-            number_of_kernals,
+            &images,
+            &number_of_kernals,
             &kernal_size[0],
             &kernal_stride[0],
-            activation_type.clone(),
-            pooling_stride,
-            pooling_window,
-            pooling_type.clone(),
+            &activation_type,
+            &pooling_stride,
+            &pooling_window,
+            &pooling_type,
         ));
 
-        for i in 1..number_of_conv_blocks {
+        for i in 1..*number_of_conv_blocks {
             let dummy_input: Vec<Vec<Vec<f64>>> = Vec::new();
             convolutional_base.push(ConvolutionalBlock::new(
                 &dummy_input,
-                number_of_kernals,
+                &number_of_kernals,
                 &kernal_size[i],
                 &kernal_stride[i],
-                activation_type.clone(),
-                pooling_stride,
-                pooling_window,
-                pooling_type.clone(),
+                &activation_type,
+                &pooling_stride,
+                &pooling_window,
+                &pooling_type,
             ));
         }
 
@@ -628,12 +633,12 @@ pub mod convolutional_neural_network {
     fn cnn_forward_pass(
         convolutional_base: &mut Vec<ConvolutionalBlock>,
         train_input: &Vec<Vec<Vec<f64>>>,
-        activation_function: ActivationFunctionCnn,
+        activation_function: &ActivationFunctionCnn,
     ) -> Vec<Vec<Vec<f64>>> {
         let mut input = train_input.clone();
         let n: usize = convolutional_base.len() - 1;
         for conv_block in convolutional_base.iter_mut() {
-            conv_block.forward(&input, activation_function.clone());
+            conv_block.forward(&input, activation_function);
             input = conv_block.conv_layer.input.clone();
         }
 
@@ -653,7 +658,7 @@ pub mod convolutional_neural_network {
         labels: &Vec<Vec<f64>>,
         model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
         model_settings: neural_network::ModelSettings,
-        
+        loss_function: Option<LossFunctionCnn>,
     ) {
         let mut cost_history: Vec<f64> = Vec::new();
 
@@ -674,37 +679,46 @@ pub mod convolutional_neural_network {
 
                 let training_batch = shuffled_training_dataset[start..edge].to_vec();
                 let label_batch = shuffled_labels_dataset[start..edge].to_vec();
-
-                let cnn_output =
-                    cnn_forward_pass(&mut model.0, &training_batch, ActivationFunctionCnn::ReLu);
+                //uses ReLu
+                let cnn_output: Vec<Vec<Vec<f64>>> =
+                    cnn_forward_pass(&mut model.0, &training_batch, &ActivationFunctionCnn::ReLu);
                 let flattened: Vec<Vec<f64>> = flatten(&cnn_output);
-                let predictions: Vec<Vec<f64>> = neural_network::forward_pass(&mut model.1, &flattened);
+                //sigmoid is used instead of ReLu
+                let prediction: Vec<Vec<f64>> =
+                    neural_network::forward_pass(&mut model.1, &flattened);
 
-                total += function::use_loss_function((&prediction, &label_batch), )
+                total +=
+                    function::use_loss_function((&prediction, &label_batch), &None, &loss_function);
+
+                let delta: Vec<Vec<f64>> = neural_network::backward_pass(
+                    &mut model.1,
+                    &prediction,
+                    &label_batch,
+                    model_settings.learning_rate.clone(),
+                );
+
+                unflatten(
+                    &model.1[0].input_matrix,
+                    (
+                        model.0[model.0.len() - 1].conv_layer.input.len(),
+                        model.0[model.0.len() - 1].conv_layer.input[0].len(),
+                        model.0[model.0.len() - 1].conv_layer.input[0][0].len(),
+                    ),
+                );
+
+                //cnn_backward_pass();
+
+                //THOUGHT: CACHE THE DIMENSIONS OF THE OUTPUT BEFORE POOLING SO WE CAN BACK PROP PROPERLY
             }
         }
-        // let model_settings: neural_network::ModelSettings = neural_network::ModelSettings {
-        //     number_of_neurons_hidden_layer: vec![5],
-        //     number_of_hidden_layers: 1,
-        //     learning_rate: 0.01,
-        //     batch_size: 36,
-        //     epochs: 1000,
-        // };
-
-        // let flattened: Vec<Vec<f64>> = flatten(&cnn_forward_pass(
-        //     convolutional_base,
-        //     train_input,
-        //     ActivationFunctionCnn::ReLu,
-        // ));
-
-        // let mut model: Vec<neural_network::Layer> = neural_network::init_model(
-        //     &model_settings.number_of_neurons_hidden_layer,
-        //     neural_network::init_input_layer(&flattened),
-        //     &model_settings.number_of_hidden_layers,
-        // );
     }
 
-    fn unflatten() {}
+    //note to self: <T: ?Sized> (input: T)
+    fn unflatten(
+        input: &[Vec<f64>],
+        (channel, row, col): (usize, usize, usize),
+    ) -> Vec<Vec<Vec<f64>>> {
+    }
 
     fn cnn_backward_pass() {}
 
@@ -712,6 +726,7 @@ pub mod convolutional_neural_network {
 
     fn backward_pass() {}
 
+    //leetcode flashbacks
     fn create_feature_map(
         input: &Vec<Vec<Vec<f64>>>,
         kernals: &Vec<Vec<Vec<f64>>>,
