@@ -218,14 +218,15 @@ pub mod functions {
         total_loss / actual_value.len() as f64
     }
 
+    //this function is magical i swear
     pub fn gradient_descent(
         model: &mut Vec<Layer>,
         prediction: &Vec<Vec<f64>>,
         actual: &Vec<Vec<f64>>,
         learning_rate: f64,
-    ) {
+    ) -> Vec<Vec<f64>> {
         let n = prediction.len() as f64;
-
+        let mut save_delta: Vec<Vec<f64>> = Vec::new();
         let mut delta = scalar_multiplication(&(2.0 / n), &matrix_subtraction(prediction, actual));
 
         for i in (0..model.len()).rev() {
@@ -238,7 +239,7 @@ pub mod functions {
                 let back = matrix_multiplication(&delta, &transpose(&model[i].weight_matrix));
 
                 //derivative of the sigmoid activation function
-                //tells the sensitivity of a neurons activation function w.r.t it's weighted sum
+                //tells the sensitivity of a neurons activation function w.r.t its weighted sum
                 let sigmoid_derivative: Vec<Vec<f64>> = model[i]
                     .input_matrix
                     .iter()
@@ -261,12 +262,17 @@ pub mod functions {
             );
 
             if let Some(d) = next_delta {
+                save_delta = d.clone();
                 delta = d;
             }
         }
+        save_delta
     }
 
-    pub fn gradient_descent_cnn() {}
+    pub fn gradient_descent_cnn() {
+        //conv block stores the current feature map and the previous feature map before pooling,activation function, and bias
+        //convolutional_base[i].conv_layer.input is also thought of as convolutional_base[i + 1].prev_input
+    }
 
     pub fn shuffle_dataset(
         training_dataset: &Vec<Vec<f64>>,
