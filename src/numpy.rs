@@ -30,10 +30,7 @@ pub mod matrix_arithmetic {
             .collect::<Vec<f64>>()
     }
 
-    pub fn matrix_multiplication(
-        matrix1: &Vec<Vec<f64>>,
-        matrix2: &Vec<Vec<f64>>,
-    ) -> Vec<Vec<f64>> {
+    pub fn matrix_multiplication(matrix1: &[Vec<f64>], matrix2: &[Vec<f64>]) -> Vec<Vec<f64>> {
         //linear algebra 101
         assert_eq!(matrix1[0].len(), matrix2.len());
 
@@ -269,7 +266,7 @@ pub mod functions {
         }
     }
 
-    pub fn gradient_descent_cnn(){}
+    pub fn gradient_descent_cnn() {}
 
     pub fn shuffle_dataset(
         training_dataset: &Vec<Vec<f64>>,
@@ -289,5 +286,29 @@ pub mod functions {
         }
 
         (shuffled_training_dataset, shuffled_actual_value_dataset)
+    }
+
+    pub fn shuffle_dataset_tensor(
+        training_dataset: &[Vec<Vec<f64>>],
+        labels_dataset: &[Vec<f64>],
+    ) -> (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) {
+        assert!(training_dataset.len() == labels_dataset.len());
+
+        let mut indicies: Vec<usize> = (0..training_dataset.len()).collect();
+        indicies.shuffle(&mut rand::rng());
+
+        let mut shuffled_training_dataset: Vec<Vec<Vec<f64>>> =
+            vec![
+                vec![vec![0.0; training_dataset[0][0].len()]; training_dataset[0].len()];
+                training_dataset.len()
+            ];
+        let mut shuffled_labels_dataset: Vec<Vec<f64>> =
+            vec![vec![0.0; labels_dataset[0].len()]; labels_dataset.len()];
+        for i in 0..indicies.len() {
+            shuffled_training_dataset[i] = training_dataset[indicies[i]].clone();
+            shuffled_labels_dataset[i] = labels_dataset[indicies[i]].clone();
+        }
+
+        (shuffled_training_dataset, shuffled_labels_dataset)
     }
 }

@@ -1,5 +1,8 @@
 use crate::housing_price_dataset::{self, generate_training_dataset as generate_housing};
-use crate::ml::{self, neural_network::{self, AvailableDatasets, Dataset, Layer, ModelSettings}};
+use crate::ml::{
+    self,
+    neural_network::{self, AvailableDatasets, Dataset, Layer, ModelSettings},
+};
 use crate::numpy::functions as function;
 use crate::numpy::matrix_arithmetic as array;
 
@@ -46,7 +49,6 @@ pub fn new() {
         model_settings.batch_size,
         Some(neural_network::LossFunction::Mse),
         None,
-        ml::Models::NeuralNetwork,
     ));
 
     neural_network::test_model(&mut model, &split_dataset.1, 219000.0, 935000.0, 15000.0);

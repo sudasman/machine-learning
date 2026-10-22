@@ -1,6 +1,10 @@
 pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display> {
     fn init_model(model: T) {}
 
+    fn train_model(model: T) {}
+
+    fn test_model(model: T) {}
+
     fn eval_model(model: T) {}
 }
 
@@ -126,7 +130,6 @@ pub mod neural_network {
         batch_size: usize,
         loss_function: Option<LossFunction>,
         loss_function_cnn: Option<convolutional_neural_network::LossFunctionCnn>,
-        model_architecture: Models,
     ) -> Vec<f64> {
         assert!(batch_size > 0 && batch_size <= data.0.len());
         let mut cost_history: Vec<f64> = Vec::new();
@@ -150,7 +153,7 @@ pub mod neural_network {
                     &loss_function,
                     &loss_function_cnn,
                 );
-                backward_pass(model, &prediction, &actual_batch, learning_rate, model_architecture.clone());
+                backward_pass(model, &prediction, &actual_batch, learning_rate);
                 batches += 1;
             }
 
@@ -271,18 +274,8 @@ pub mod neural_network {
         prediction: &Vec<Vec<f64>>,
         actual: &Vec<Vec<f64>>,
         learning_rate: f64,
-        model_architecture: Models,
     ) {
-        match model_architecture {
-            Models::NeuralNetwork => {
-                function::gradient_descent(model, prediction, actual, learning_rate);
-            },
-            Models::ConvolutionalNeuralNetwork => {
-
-            },
-            _ => ()
-            
-        };
+        function::gradient_descent(model, prediction, actual, learning_rate);
     }
 
     pub fn train_test_split(
@@ -632,11 +625,6 @@ pub mod convolutional_neural_network {
         convolutional_base
     }
 
-    //get a prediction -> calculate loss
-    //back propagate all the way through to the convolutional parts
-    //parameters to optimize -> Conv: Kernals + Bias, Neural Net: Weight + Bias
-
-    //todo: learn how you can optimize the parameters in the convolutional base
     fn cnn_forward_pass(
         convolutional_base: &mut Vec<ConvolutionalBlock>,
         train_input: &Vec<Vec<Vec<f64>>>,
@@ -660,52 +648,63 @@ pub mod convolutional_neural_network {
             .collect::<Vec<Vec<f64>>>()
     }
 
-    fn train_with_flattened_data(
-        cnn_output: &Vec<Vec<Vec<f64>>>,
+    fn train_model_cnn(
+        images: &Vec<Vec<Vec<f64>>>,
         labels: &Vec<Vec<f64>>,
-        convolutional_base: &mut Vec<ConvolutionalBlock>,
-        train_input: &Vec<Vec<Vec<f64>>>,
+        model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
+        model_settings: neural_network::ModelSettings,
+        
     ) {
-        //1. forward pass through the neural net
-        //2. make prediction
-        //3. calculate loss
-        //4. this function will then be uesd in the back propagation fn for training
+        let mut cost_history: Vec<f64> = Vec::new();
 
-        let model_settings: neural_network::ModelSettings = neural_network::ModelSettings {
-            number_of_neurons_hidden_layer: vec![5],
-            number_of_hidden_layers: 1,
-            learning_rate: 0.01,
-            batch_size: 36,
-            epochs: 1000,
-        };
+        let epochs: usize = model_settings.epochs.clone();
 
-        let flattened: Vec<Vec<f64>> = flatten(&cnn_forward_pass(
-            convolutional_base,
-            train_input,
-            ActivationFunctionCnn::ReLu,
-        ));
+        for epoch in 0..epochs {
+            let (shuffled_training_dataset, shuffled_labels_dataset): (
+                Vec<Vec<Vec<f64>>>,
+                Vec<Vec<f64>>,
+            ) = function::shuffle_dataset_tensor(images, labels);
+            let (mut total, mut batches): (f64, usize) = (0.0, 0);
 
-        let mut model: Vec<neural_network::Layer> = neural_network::init_model(
-            &model_settings.number_of_neurons_hidden_layer,
-            neural_network::init_input_layer(&flattened),
-            &model_settings.number_of_hidden_layers,
-        );
+            for start in
+                (0..shuffled_training_dataset.len()).step_by(model_settings.batch_size.clone())
+            {
+                let edge = (start + model_settings.batch_size.clone())
+                    .min(shuffled_training_dataset.len());
 
-        //this will most likely break the program: the backward pass doesnt consider the cnn part
-        //fix: refactor train model to detect if its a cnn or not and refactor the backward pass (gradient descent) fucntion
-        neural_network::train_model(
-            &(flattened, labels.clone()),
-            &mut model,
-            model_settings.learning_rate,
-            model_settings.epochs,
-            model_settings.batch_size,
-            None,
-            Some(LossFunctionCnn::CrossEntropyLoss),
-            Models::ConvolutionalNeuralNetwork,
-        );
+                let training_batch = shuffled_training_dataset[start..edge].to_vec();
+                let label_batch = shuffled_labels_dataset[start..edge].to_vec();
 
-        // neural_network::test_model();
+                let cnn_output =
+                    cnn_forward_pass(&mut model.0, &training_batch, ActivationFunctionCnn::ReLu);
+                let flattened: Vec<Vec<f64>> = flatten(&cnn_output);
+                let predictions: Vec<Vec<f64>> = neural_network::forward_pass(&mut model.1, &flattened);
+
+                total += function::use_loss_function((&prediction, &label_batch), )
+            }
+        }
+        // let model_settings: neural_network::ModelSettings = neural_network::ModelSettings {
+        //     number_of_neurons_hidden_layer: vec![5],
+        //     number_of_hidden_layers: 1,
+        //     learning_rate: 0.01,
+        //     batch_size: 36,
+        //     epochs: 1000,
+        // };
+
+        // let flattened: Vec<Vec<f64>> = flatten(&cnn_forward_pass(
+        //     convolutional_base,
+        //     train_input,
+        //     ActivationFunctionCnn::ReLu,
+        // ));
+
+        // let mut model: Vec<neural_network::Layer> = neural_network::init_model(
+        //     &model_settings.number_of_neurons_hidden_layer,
+        //     neural_network::init_input_layer(&flattened),
+        //     &model_settings.number_of_hidden_layers,
+        // );
     }
+
+    fn unflatten() {}
 
     fn cnn_backward_pass() {}
 
