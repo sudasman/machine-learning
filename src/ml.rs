@@ -404,7 +404,7 @@ pub mod convolutional_neural_network {
     }
 
     #[derive(Debug)]
-    struct ConvolutionalLayer {
+    pub struct ConvolutionalLayer {
         //tensor inputs
         input: Vec<Vec<Vec<f64>>>,
         //multiple kernals per conv layer, will only be using square kernals
@@ -416,7 +416,7 @@ pub mod convolutional_neural_network {
     }
 
     #[derive(Debug)]
-    struct PoolingLayer {
+    pub struct PoolingLayer {
         //will be using only squares as well
         pooling_window: usize,
         pooling_stride: usize,
@@ -424,7 +424,7 @@ pub mod convolutional_neural_network {
     }
 
     #[derive(Debug)]
-    struct ConvolutionalBlock {
+    pub struct ConvolutionalBlock {
         conv_layer: ConvolutionalLayer,
         pooling_layer: PoolingLayer,
         //used for optimization
@@ -470,20 +470,16 @@ pub mod convolutional_neural_network {
             pooling_window: &usize,
             pooling_type: &PoolingType,
         ) -> Self {
-            let mut kernals: Vec<Vec<Vec<Vec<f64>>>> = Vec::new();
-
-            (0..*number_of_kernals).map(|i| {
-                let mut temp: Vec<Vec<Vec<f64>>> = Vec::new();
-                (0..*number_of_kernals).map(|j| {
-                    //remember: fn push(&mut self)
-                    temp.push(array::create_matrix(
-                        kernal_size.clone(),
-                        kernal_size.clone(),
-                        true,
-                    ));
-                });
-                kernals.push(temp);
-            });
+            let kernals = (0..*number_of_kernals)
+                .map(|_| {
+                    (0..*kernal_channels)
+                        .map(|_| {
+                            //remember: fn push(&mut self)
+                            array::create_matrix(kernal_size.clone(), kernal_size.clone(), true)
+                        })
+                        .collect::<Vec<Vec<Vec<f64>>>>()
+                })
+                .collect::<Vec<Vec<Vec<Vec<f64>>>>>();
 
             let bias_matrix: Vec<f64> = array::cnn_bias_matrix(kernals.len());
 
@@ -761,19 +757,63 @@ pub mod convolutional_neural_network {
                     model_settings.learning_rate.clone(),
                 );
 
-                // unflatten(
-                //     &model.1[0].input_matrix,
-                //     (
-                //         model.0[model.0.len() - 1].conv_layer.input.len(),
-                //         model.0[model.0.len() - 1].conv_layer.input[0].len(),
-                //         model.0[model.0.len() - 1].conv_layer.input[0][0].len(),
-                //     ),
-                // );
+                // let grad: Vec<Vec<Vec<Vec<f64>>>> = unflatten(&extract_delta);
 
-                //cnn_backward_pass();
+                // cnn_backward_pass(&mut model.0, &extract_delta, &model_settings.learning_rate);
             }
         }
     }
+
+    pub fn gradient_descent_cnn(
+        model_cnn: &mut Vec<ConvolutionalBlock>,
+        //[number_of_delta][channel][row][col]
+        mut delta: &Vec<Vec<Vec<Vec<f64>>>>,
+        learning_rate: &f64,
+    ) {
+        //conv block stores the current feature map and the previous feature map before pooling,activation function, and bias
+        //convolutional_base[i].conv_layer.input is also thought of as convolutional_base[i + 1].prev_input
+    }
+
+    fn max_pool_backpass(
+        pre_pool: &Vec<Vec<Vec<f64>>>,
+        delta: &Vec<Vec<Vec<f64>>>,
+        pooling_window: &usize,
+        pooling_stride: &usize,
+    ) -> Vec<Vec<Vec<f64>>> {
+        let mut grad_pre_pool =
+            vec![vec![vec![0.0; pre_pool[0][0].len()]; pre_pool[0].len()]; pre_pool.len()];
+
+        for channel in 0..grad_pre_pool.len() {
+            for i in 0..grad_pre_pool[channel].len() {
+                for j in 0..grad_pre_pool[channel][i].len() {
+                    let (mut max, mut pos): (f64, (usize, usize)) = (f64::NEG_INFINITY, (0, 0));
+                    for u in 0..pooling_window.clone() {
+                        for v in 0..*pooling_window {
+                            let (row, col) = (i * pooling_stride + u, j * pooling_stride + v);
+                            max = if max > pre_pool[channel][row][col] {
+                                pos = (row, col);
+                                pre_pool[channel][row][col]
+                            } else {
+                                max
+                            }
+                        }
+                    }
+                    grad_pre_pool[channel][pos.0][pos.1] += delta[channel][i][j];
+                }
+            }
+        }
+        grad_pre_pool
+    }
+
+    fn conv_backward() {}
+
+    fn cnn_backward_pass() {}
+
+    fn cnn_zero_grad() {}
+
+    fn cnn_update_parameters() {}
+
+    fn grad_check() {}
 
     pub fn softmax_cross_entropy_grad(
         predictions: &Vec<Vec<f64>>,
@@ -799,8 +839,18 @@ pub mod convolutional_neural_network {
             .collect::<Vec<Vec<f64>>>()
     }
 
-    //note to self: <T: ?Sized> (input: T)
     fn unflatten(
+        input: &Vec<Vec<f64>>,
+        (channels, rows, cols): (usize, usize, usize),
+    ) -> Vec<Vec<Vec<Vec<f64>>>> {
+        input
+            .iter()
+            .map(|image| unflatten_single(&image, (channels, rows, cols)))
+            .collect::<Vec<Vec<Vec<Vec<f64>>>>>()
+    }
+
+    //note to self: <T: ?Sized> (input: T)
+    fn unflatten_single(
         input: &[f64],
         (channels, rows, cols): (usize, usize, usize),
     ) -> Vec<Vec<Vec<f64>>> {
@@ -814,12 +864,6 @@ pub mod convolutional_neural_network {
             .collect::<Vec<Vec<Vec<f64>>>>()
     }
 
-    fn cnn_backward_pass() {}
-
-    fn forward_pass() {}
-
-    fn backward_pass() {}
-
     //leetcode flashbacks
     //there may or may not be a error here
     fn create_feature_map(
@@ -829,14 +873,15 @@ pub mod convolutional_neural_network {
         kernals: &Vec<Vec<Vec<Vec<f64>>>>,
         stride: &usize,
     ) -> Vec<Vec<Vec<f64>>> {
-        assert!(stride.clone() > 0 as usize);
+        assert!(stride.clone() > 0 as usize && kernals.len() > 0);
+        assert!(input.len() == kernals[0].len());
 
         kernals
             .iter()
             .map(|kernal| {
-                (0..(input[0].len() - kernals[0].len()) / stride + 1)
+                (0..(input[0].len() - kernals[0][0].len()) / stride + 1)
                     .map(|i| {
-                        (0..(input[0][0].len() - kernals[0][0].len()) / stride + 1)
+                        (0..(input[0][0].len() - kernals[0][0][0].len()) / stride + 1)
                             .map(|j| {
                                 input
                                     .iter()

@@ -219,6 +219,7 @@ pub mod functions {
     }
 
     //this function is magical i swear
+    //dont ask why this is in the numpy module
     pub fn gradient_descent(
         model: &mut Vec<Layer>,
         mut delta: Vec<Vec<f64>>,
@@ -263,11 +264,6 @@ pub mod functions {
             }
         }
         save_delta
-    }
-
-    pub fn gradient_descent_cnn() {
-        //conv block stores the current feature map and the previous feature map before pooling,activation function, and bias
-        //convolutional_base[i].conv_layer.input is also thought of as convolutional_base[i + 1].prev_input
     }
 
     pub fn shuffle_dataset(
