@@ -1,7 +1,7 @@
 use crate::housing_price_dataset::{self, generate_training_dataset as generate_housing};
 use crate::ml::{
     self,
-    neural_network::{self, AvailableDatasets, Dataset, Layer, ModelSettings},
+    neural_network::{self, Dataset, Layer, ModelSettings},
 };
 use crate::numpy::functions as function;
 use crate::numpy::matrix_arithmetic as array;
@@ -18,12 +18,13 @@ pub fn new() {
     let number_of_datasets = 1000;
     //number_of_datasets is consumed here
     let mut data: Dataset = neural_network::Dataset::new(number_of_datasets);
-    data.generate_dataset(AvailableDatasets::Housing);
+    data.generate_dataset(crate::ml::AvailableDatasets::Housing);
 
     let mut model: Vec<Layer> = neural_network::init_model(
         &model_settings.number_of_neurons_hidden_layer,
         neural_network::init_input_layer(&data.dataset.0),
         &model_settings.number_of_hidden_layers,
+        &crate::ml::AvailableDatasets::Housing,
     );
 
     //0.0 -> training x split, 0.1 -> training y split

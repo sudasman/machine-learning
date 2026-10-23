@@ -221,23 +221,19 @@ pub mod functions {
     //this function is magical i swear
     pub fn gradient_descent(
         model: &mut Vec<Layer>,
-        prediction: &Vec<Vec<f64>>,
-        actual: &Vec<Vec<f64>>,
+        mut delta: Vec<Vec<f64>>,
         learning_rate: f64,
     ) -> Vec<Vec<f64>> {
-        let n = prediction.len() as f64;
         let mut save_delta: Vec<Vec<f64>> = Vec::new();
-        let mut delta = scalar_multiplication(&(2.0 / n), &matrix_subtraction(prediction, actual));
 
         for i in (0..model.len()).rev() {
             let weight_gradient: Vec<Vec<f64>> =
                 matrix_multiplication(&transpose(&model[i].input_matrix), &delta);
             let bias_gradient: Vec<Vec<f64>> = sum_columns(&delta);
+            //how loss changes
+            let back = matrix_multiplication(&delta, &transpose(&model[i].weight_matrix));
 
             let next_delta: Option<Vec<Vec<f64>>> = if i > 0 {
-                //how loss changes
-                let back = matrix_multiplication(&delta, &transpose(&model[i].weight_matrix));
-
                 //derivative of the sigmoid activation function
                 //tells the sensitivity of a neurons activation function w.r.t its weighted sum
                 let sigmoid_derivative: Vec<Vec<f64>> = model[i]
@@ -247,6 +243,7 @@ pub mod functions {
                     .collect();
                 Some(hadamard(&back, &sigmoid_derivative))
             } else {
+                save_delta = back;
                 None
             };
 
@@ -262,7 +259,6 @@ pub mod functions {
             );
 
             if let Some(d) = next_delta {
-                save_delta = d.clone();
                 delta = d;
             }
         }
