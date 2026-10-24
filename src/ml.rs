@@ -555,6 +555,49 @@ pub mod convolutional_neural_network {
                 },
             )
         }
+
+        //returns partial Loss / partial pre_activation_function (partial L / partial z == dz)
+        fn backward(
+            &mut self,
+            cache: &BlockCache,
+            //grad[i]
+            delta: &Vec<Vec<Vec<f64>>>,
+            //need_input_gradient = if convolutional_base.len() == 1 { false } else { true }
+            need_input_gradient: bool,
+        ) -> Vec<Vec<Vec<f64>>> {
+            //dz is also known as grad_pre_pool
+            let mut dz: Vec<Vec<Vec<f64>>> = max_pool_backpass(
+                &cache.post_activation,
+                delta,
+                &self.pooling_layer.pooling_window,
+                &self.pooling_layer.pooling_stride,
+            );
+
+            //derivative_of_ReLu(post_activation) = if post_activation > 0 { 1 } else { 0 }
+            //partial L / partial Z = (partial L / partial A) * (partial A / partial Z) = (partial L / partial A) * ReLu'(Z)
+            //where L = cross entropy loss, Z = pre activation
+            for channel in 0..dz.len() {
+                for row in 0..dz[channel].len() {
+                    for col in 0..dz[channel][row].len() {
+                        if cache.post_activation[channel][row][col] <= 0.0 {
+                            // > 0 case is ignored becuase of redundancy (multiplication by 1)
+                            //we perform element wise multiplication with dz and ReLu'(Z)
+                            dz[channel][row][col] = 0.0;
+                        }
+                    }
+                }
+            }
+
+            conv_backward(
+                &dz,
+                &cache.prev_input,
+                &self.conv_layer.kernels,
+                &self.conv_layer.stride,
+                &mut self.kernel_gradient,
+                &mut self.bias_gradient,
+                need_input_gradient,
+            )
+        }
     }
 
     fn add_bias(feature_map: &Vec<Vec<Vec<f64>>>, bias: &Vec<f64>) -> Vec<Vec<Vec<f64>>> {
@@ -659,6 +702,7 @@ pub mod convolutional_neural_network {
         pooling_stride: &usize,
         pooling_type: &PoolingType,
     ) -> Vec<ConvolutionalBlock> {
+        assert!(number_of_conv_blocks.clone() >= 1);
         //the indices of kernel_size and kernel_stride represent their respective kernel sizes and strides at that convolutional block
         let mut convolutional_base: Vec<ConvolutionalBlock> = Vec::new();
         let mut input_channels = images.len();
@@ -675,7 +719,7 @@ pub mod convolutional_neural_network {
             &pooling_type,
         ));
         input_channels = number_of_kernels[0];
-//m
+
         for i in 1..*number_of_conv_blocks {
             let dummy_input: Vec<Vec<Vec<f64>>> = Vec::new();
             convolutional_base.push(ConvolutionalBlock::new(
@@ -735,7 +779,6 @@ pub mod convolutional_neural_network {
         let epochs: usize = model_settings.epochs.clone();
         //[image][conv_block][cache]
         for epoch in 0..epochs {
-            let mut images_cache: Vec<Vec<BlockCache>> = Vec::new();
             let (shuffled_training_dataset, shuffled_labels_dataset): (
                 Vec<Vec<Vec<f64>>>,
                 Vec<Vec<f64>>,
@@ -745,6 +788,7 @@ pub mod convolutional_neural_network {
             for start in
                 (0..shuffled_training_dataset.len()).step_by(model_settings.batch_size.clone())
             {
+                let mut images_cache: Vec<Vec<BlockCache>> = Vec::new();
                 let mut flattened_images: Vec<Vec<f64>> = Vec::new();
                 let edge = (start + model_settings.batch_size.clone())
                     .min(shuffled_training_dataset.len());
@@ -771,6 +815,7 @@ pub mod convolutional_neural_network {
                     flattened_images.push(flatten(&cnn_output));
                 }
 
+                //need to initialze model.1 with output_dim
                 let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
                     &mut model.1,
                     &flattened_images,
@@ -788,7 +833,7 @@ pub mod convolutional_neural_network {
                     model_settings.learning_rate.clone(),
                 );
 
-                // let grad: Vec<Vec<Vec<Vec<f64>>>> = unflatten(&extract_delta);
+                let grad: Vec<Vec<Vec<Vec<f64>>>> = unflatten(&extract_delta, &output_dim);
 
                 // cnn_backward_pass(&mut model.0, &extract_delta, &model_settings.learning_rate);
             }
@@ -829,6 +874,7 @@ pub mod convolutional_neural_network {
                             }
                         }
                     }
+                    //grad_pre_pool[channel][pos.0][pos.1] is the index that the max value was pooled from
                     grad_pre_pool[channel][pos.0][pos.1] += delta[channel][i][j];
                 }
             }
@@ -836,16 +882,102 @@ pub mod convolutional_neural_network {
         grad_pre_pool
     }
 
-    fn conv_backward() {}
+    fn conv_backward(
+        //derived from backward()
+        //[kernel][row][col]
+        dz: &Vec<Vec<Vec<f64>>>,
+        //[channel][row][col]
+        prev_input: &Vec<Vec<Vec<f64>>>,
+        //[kernel][channel][row][col]
+        kernels: &Vec<Vec<Vec<Vec<f64>>>>,
+        stride: &usize,
+        //dimension same as kernels
+        kernel_gradient: &mut Vec<Vec<Vec<Vec<f64>>>>,
+        bias_gradient: &mut Vec<f64>,
+        need_input_gradient: bool,
+    ) -> Vec<Vec<Vec<f64>>> {
+        assert!(kernels[0][0].len() == kernel_gradient[0][0].len());
+        //input_gradient is used to train the block before it
+        //hence, if there is no such block, being the first convolutional block, need_input_gradient = false
+        //the dimensions should convey the same message
+        let mut input_gradient =
+            vec![vec![vec![0.0; prev_input[0][0].len()]; prev_input[0].len()]; prev_input.len()];
 
-    fn cnn_backward_pass() {}
+        //all correspondant to kernel index
+        for kernel_index in 0..dz.len() {
+            for row in 0..dz[kernel_index].len() {
+                for col in 0..dz[kernel_index][row].len() {
+                    //gradient used for optimizing kernel and bias
+                    let gradient = dz[kernel_index][row][col];
+                    //bias_gradient[kernel_index] is the bias matrix used for the kernel_index'th kernel
+                    bias_gradient[kernel_index] += gradient;
+                    //kernel channels == prev_input.len(), so indexing matches
+                    for channel in 0..prev_input.len() {
+                        //square kernels guarenteed
+                        for kernel_row in 0..kernels[0][0].len() {
+                            for kernel_col in 0..kernels[0][0].len() {
+                                let (adj_row, adj_col) =
+                                    (row * stride + kernel_row, col * stride + kernel_col);
+                                //partial L / partial K  = (partial L / partial Z) * (partial Z / partial K)
+                                kernel_gradient[kernel_index][channel][kernel_row][kernel_col] +=
+                                    gradient * prev_input[channel][adj_row][adj_col];
+                                if need_input_gradient {
+                                    //partial L / partial X = (partial L / partial Z) * (partial Z / partial X)
+                                    input_gradient[channel][adj_row][adj_col] += gradient
+                                        * kernels[kernel_index][channel][kernel_row][kernel_col]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        input_gradient
+    }
 
-    //zero the grad during training
-    fn cnn_zero_grad() {}
+    fn cnn_backward_pass(
+        convolutional_base: &mut Vec<ConvolutionalBlock>,
+        caches: &Vec<BlockCache>,
+        delta: &Vec<Vec<Vec<f64>>>,
+    ) {
+        let mut delta = delta.clone();
+        for (i, block) in convolutional_base.iter_mut().enumerate().rev() {
+            //need_input_grad = if i > 0 { true } else { false }
+            delta = block.backward(&caches[i], &delta, i > 0)
+        }
+    }
 
-    fn cnn_update_parameters() {}
+    //zero the gradients after every batch
+    fn cnn_zero_grad(
+        convolutional_base: &mut Vec<ConvolutionalBlock>
+    ) {
+        for block in convolutional_base.iter_mut() {
+            //block is 4d, hence the three flatten calls
+            //the closure for for each uses a reference to x
+            //flatten it to 1d and call for_each
+            block.kernel_gradient.iter_mut().flatten().flatten().flatten().for_each(|x| *x = 0.0);
+            block.bias_gradient.iter_mut().for_each(|x| *x = 0.0);
+        }
+    }
 
-    fn grad_check() {}
+    fn cnn_update_parameters(convolutional_base: &mut Vec<ConvolutionalBlock>, learning_rate: &f64) {
+        for block in convolutional_base.iter_mut() {
+            for kernel_index in 0..block.conv_layer.kernels.len() {
+                for channel in 0..block.conv_layer.kernels[kernel_index].len() {
+                    for row in 0..block.conv_layer.kernels[kernel_index][channel].len() {
+                        for col in 0..block.conv_layer.kernels[kernel_index][channel][row].len() {
+                            block.conv_layer.kernels[kernel_index][channel][row][col] -= learning_rate * block.kernel_gradient[kernel_index][channel][row][col];
+                        }
+                    }
+                }
+                //number of bias matrices == number of kernels
+                //kernel index corresponds to its respective bias matrix
+                block.conv_layer.bias_matrix[kernel_index] -= learning_rate * block.bias_gradient[kernel_index];
+            }
+        }
+    }
+
+    fn cnn_gradient_check() {}
 
     pub fn softmax_cross_entropy_grad(
         predictions: &Vec<Vec<f64>>,
@@ -873,11 +1005,14 @@ pub mod convolutional_neural_network {
 
     fn unflatten(
         input: &Vec<Vec<f64>>,
-        (channels, rows, cols): (usize, usize, usize),
+        //(channels, rows, cols)
+        output_dim: &Vec<(usize, usize, usize)>,
     ) -> Vec<Vec<Vec<Vec<f64>>>> {
+        assert!(input.len() == output_dim.len());
         input
             .iter()
-            .map(|image| unflatten_single(&image, (channels, rows, cols)))
+            .enumerate()
+            .map(|(i, image)| unflatten_single(image, output_dim[i]))
             .collect::<Vec<Vec<Vec<Vec<f64>>>>>()
     }
 
