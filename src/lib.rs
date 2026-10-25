@@ -2,6 +2,7 @@
 pub mod housing_price_dataset;
 #[path = "../models/housing_price_predictor.rs"]
 pub mod housing_price_predictor;
+pub mod macros;
 pub mod ml;
 #[path = "../datasets/number_dataset.rs"]
 pub mod number_dataset;
