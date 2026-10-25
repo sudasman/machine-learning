@@ -1,3 +1,5 @@
+use crate::macros;
+
 pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display> {
     fn init_model(model: T) {}
 
@@ -460,6 +462,22 @@ pub mod convolutional_neural_network {
         CrossEntropyLoss,
     }
 
+    //todo: 1. diversity in kernel + strides dimensions per block
+    //      2. diversity in pooling windows + pooling strides per pooling layer
+    //these changes aren't important but provides the user more customization
+    crate::pubify!(
+        struct cnn_model_settings {
+            number_of_conv_blocks: usize,
+            number_of_kernels: Vec<usize>,
+            kernel_size: Vec<usize>,
+            kernel_stride: Vec<usize>,
+            activation_type: ActivationFunctionCnn,
+            pooling_window_size: usize,
+            pooling_stride: usize,
+            pooling_type: PoolingType,
+        }
+    );
+
     //intialize the layers, backpropgation will use the vec storing Convblocks with &mut
     //note: padding not implemented
     //neither is a fully rgb input
@@ -705,12 +723,13 @@ pub mod convolutional_neural_network {
         assert!(number_of_conv_blocks.clone() >= 1);
         //the indices of kernel_size and kernel_stride represent their respective kernel sizes and strides at that convolutional block
         let mut convolutional_base: Vec<ConvolutionalBlock> = Vec::new();
-        let mut input_channels = images.len();
         //base, the next convolutional blocks will have different inputs
         convolutional_base.push(ConvolutionalBlock::new(
             &images,
             &number_of_kernels[0],
-            &input_channels,
+            //greyscale: 1 | RGB: 3
+            //hardcoded for now, will make it dynamic later
+            &1,
             &kernel_size[0],
             &kernel_stride[0],
             &activation_type,
@@ -718,7 +737,7 @@ pub mod convolutional_neural_network {
             &pooling_window,
             &pooling_type,
         ));
-        input_channels = number_of_kernels[0];
+        let mut input_channels = number_of_kernels[0];
 
         for i in 1..*number_of_conv_blocks {
             let dummy_input: Vec<Vec<Vec<f64>>> = Vec::new();
@@ -767,7 +786,7 @@ pub mod convolutional_neural_network {
     }
 
     //pass model.1 as Vec::new() -> initlize in this fn
-    fn train_model_cnn(
+    pub fn train_model_cnn(
         images: &Vec<Vec<Vec<f64>>>,
         labels: &Vec<Vec<f64>>,
         model: &mut (Vec<ConvolutionalBlock>, Option<Vec<neural_network::Layer>>),
@@ -822,12 +841,15 @@ pub mod convolutional_neural_network {
                 }
 
                 //please future me fix this init_input_layer function, its so horrid (forward pass overwrites whatever you input into it)
-                model.1 = Some(neural_network::init_model(
-                    &model_settings.number_of_neurons_hidden_layer,
-                    neural_network::init_input_layer(&flattened_images),
-                    &model_settings.number_of_hidden_layers,
-                    &AvailableDatasets::Numbers,
-                ));
+                //if statement prevents the dense layer being reinitialized every batch
+                if model.1.is_none() {
+                    model.1 = Some(neural_network::init_model(
+                        &model_settings.number_of_neurons_hidden_layer,
+                        neural_network::init_input_layer(&Vec::new()),
+                        &model_settings.number_of_hidden_layers,
+                        &AvailableDatasets::Numbers,
+                    ));
+                }
 
                 //need to initialze model.1 with output_dim
                 let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
