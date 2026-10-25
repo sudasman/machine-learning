@@ -1,1 +1,1 @@
-# machine-learning from the ground up
+# machine learning from the ground up
