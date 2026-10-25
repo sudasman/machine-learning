@@ -770,13 +770,19 @@ pub mod convolutional_neural_network {
     fn train_model_cnn(
         images: &Vec<Vec<Vec<f64>>>,
         labels: &Vec<Vec<f64>>,
-        model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
+        model: &mut (Vec<ConvolutionalBlock>, Option<Vec<neural_network::Layer>>),
         model_settings: neural_network::ModelSettings,
         loss_function: Option<LossFunctionCnn>,
-    ) {
+    ) -> Vec<f64> {
+        assert!(
+            images
+                .iter()
+                .all(|img| img.len() == images[0].len() && img[0].len() == images[0][0].len()),
+            "inconsistent image sizes"
+        );
         assert!(model_settings.batch_size > 0 && model_settings.batch_size <= images.len());
         let mut cost_history: Vec<f64> = Vec::new();
-        let epochs: usize = model_settings.epochs.clone();
+        let epochs: usize = model_settings.epochs;
         //[image][conv_block][cache]
         for epoch in 0..epochs {
             let (shuffled_training_dataset, shuffled_labels_dataset): (
@@ -785,9 +791,7 @@ pub mod convolutional_neural_network {
             ) = function::shuffle_dataset_tensor(images, labels);
             let (mut total, mut batches): (f64, usize) = (0.0, 0);
 
-            for start in
-                (0..shuffled_training_dataset.len()).step_by(model_settings.batch_size.clone())
-            {
+            for start in (0..shuffled_training_dataset.len()).step_by(model_settings.batch_size) {
                 let mut images_cache: Vec<Vec<BlockCache>> = Vec::new();
                 let mut flattened_images: Vec<Vec<f64>> = Vec::new();
                 let edge = (start + model_settings.batch_size.clone())
@@ -806,6 +810,8 @@ pub mod convolutional_neural_network {
                             &ActivationFunctionCnn::ReLu,
                         );
                     images_cache.push(cache);
+                    //output_dim coult be rewritten better
+                    //for example maybe vec![(cnn_output.len(), cnn_output[0].len(), cnn_output[0][0].len()); training_batch.len()]
                     output_dim.push((
                         cnn_output.len(),
                         cnn_output[0].len(),
@@ -815,9 +821,17 @@ pub mod convolutional_neural_network {
                     flattened_images.push(flatten(&cnn_output));
                 }
 
+                //please future me fix this init_input_layer function, its so horrid (forward pass overwrites whatever you input into it)
+                model.1 = Some(neural_network::init_model(
+                    &model_settings.number_of_neurons_hidden_layer,
+                    neural_network::init_input_layer(&flattened_images),
+                    &model_settings.number_of_hidden_layers,
+                    &AvailableDatasets::Numbers,
+                ));
+
                 //need to initialze model.1 with output_dim
                 let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
-                    &mut model.1,
+                    model.1.as_mut().unwrap(),
                     &flattened_images,
                     &neural_network::ActivationFunction::Softmax,
                 );
@@ -828,26 +842,49 @@ pub mod convolutional_neural_network {
                 let delta = softmax_cross_entropy_grad(&prediction, &label_batch);
 
                 let extract_delta: Vec<Vec<f64>> = neural_network::backward_pass(
-                    &mut model.1,
+                    model.1.as_mut().unwrap(),
                     delta,
                     model_settings.learning_rate.clone(),
                 );
 
+                //input_gradient from the dense layer
                 let grad: Vec<Vec<Vec<Vec<f64>>>> = unflatten(&extract_delta, &output_dim);
 
-                // cnn_backward_pass(&mut model.0, &extract_delta, &model_settings.learning_rate);
+                gradient_descent_cnn(
+                    &mut model.0,
+                    &grad,
+                    &model_settings.learning_rate,
+                    &images_cache,
+                );
+                batches += 1;
+            }
+            let avg: f64 = total / batches as f64;
+            cost_history.push(avg);
+
+            if epoch % 100 == 0 {
+                println!("Epoch {} Cost: {}", epoch, avg);
             }
         }
+        cost_history
     }
 
     pub fn gradient_descent_cnn(
         model_cnn: &mut Vec<ConvolutionalBlock>,
-        //[number_of_delta][channel][row][col]
+        //[sample][channel][row][col]
         mut delta: &Vec<Vec<Vec<Vec<f64>>>>,
         learning_rate: &f64,
+        images_cache: &Vec<Vec<BlockCache>>,
     ) {
         //conv block stores the current feature map and the previous feature map before pooling,activation function, and bias
         //convolutional_base[i].conv_layer.input is also thought of as convolutional_base[i + 1].prev_input
+
+        cnn_zero_grad(model_cnn);
+
+        for i in 0..delta.len() {
+            cnn_backward_pass(model_cnn, &images_cache[i], &delta[i]);
+        }
+
+        cnn_update_parameters(model_cnn, learning_rate);
     }
 
     fn max_pool_backpass(
@@ -948,31 +985,41 @@ pub mod convolutional_neural_network {
     }
 
     //zero the gradients after every batch
-    fn cnn_zero_grad(
-        convolutional_base: &mut Vec<ConvolutionalBlock>
-    ) {
+    fn cnn_zero_grad(convolutional_base: &mut Vec<ConvolutionalBlock>) {
         for block in convolutional_base.iter_mut() {
             //block is 4d, hence the three flatten calls
             //the closure for for each uses a reference to x
             //flatten it to 1d and call for_each
-            block.kernel_gradient.iter_mut().flatten().flatten().flatten().for_each(|x| *x = 0.0);
+            block
+                .kernel_gradient
+                .iter_mut()
+                .flatten()
+                .flatten()
+                .flatten()
+                .for_each(|x| *x = 0.0);
             block.bias_gradient.iter_mut().for_each(|x| *x = 0.0);
         }
     }
 
-    fn cnn_update_parameters(convolutional_base: &mut Vec<ConvolutionalBlock>, learning_rate: &f64) {
+    fn cnn_update_parameters(
+        convolutional_base: &mut Vec<ConvolutionalBlock>,
+        learning_rate: &f64,
+    ) {
         for block in convolutional_base.iter_mut() {
             for kernel_index in 0..block.conv_layer.kernels.len() {
                 for channel in 0..block.conv_layer.kernels[kernel_index].len() {
                     for row in 0..block.conv_layer.kernels[kernel_index][channel].len() {
                         for col in 0..block.conv_layer.kernels[kernel_index][channel][row].len() {
-                            block.conv_layer.kernels[kernel_index][channel][row][col] -= learning_rate * block.kernel_gradient[kernel_index][channel][row][col];
+                            block.conv_layer.kernels[kernel_index][channel][row][col] -=
+                                learning_rate
+                                    * block.kernel_gradient[kernel_index][channel][row][col];
                         }
                     }
                 }
                 //number of bias matrices == number of kernels
                 //kernel index corresponds to its respective bias matrix
-                block.conv_layer.bias_matrix[kernel_index] -= learning_rate * block.bias_gradient[kernel_index];
+                block.conv_layer.bias_matrix[kernel_index] -=
+                    learning_rate * block.bias_gradient[kernel_index];
             }
         }
     }
