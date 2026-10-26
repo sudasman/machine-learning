@@ -101,3 +101,13 @@ pub fn load_dataset() -> (
         (testing_images, testing_labels),
     )
 }
+
+pub fn normalize(images: &mut Vec<Vec<Vec<f64>>>) {
+    for image in images {
+        for row in 0..image.len() {
+            for col in 0..image[row].len() {
+                image[row][col] = image[row][col] / 255.0;
+            }
+        }
+    }
+}

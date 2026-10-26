@@ -164,18 +164,15 @@ pub mod functions {
     }
     //Use Case: Multi Class Classification (Number Recognition)
     pub fn softmax(weighted_sum_matrix: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-        let mut matrix = vec![vec![0.0; weighted_sum_matrix[0].len()]; weighted_sum_matrix.len()];
-
-        let mut denominator_sum: f64 = 0.0;
-
-        for i in 0..weighted_sum_matrix.len() {
-            denominator_sum += weighted_sum_matrix[i][0].exp()
-        }
-
-        for i in 0..weighted_sum_matrix.len() {
-            matrix[i][0] = weighted_sum_matrix[i][0].exp() / denominator_sum;
-        }
-        matrix
+        weighted_sum_matrix
+            .iter()
+            .map(|row| {
+                let max = row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                let exps: Vec<f64> = row.iter().map(|&x| (x - max).exp()).collect();
+                let sum: f64 = exps.iter().sum();
+                exps.into_iter().map(|x| x / sum).collect()
+            })
+            .collect::<Vec<Vec<f64>>>()
     }
 
     pub fn use_loss_function(

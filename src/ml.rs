@@ -1,3 +1,5 @@
+//add regularization such as L1/L2, Dropout, Early Stopping, and Batch Normalization
+
 use crate::macros;
 
 pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display> {
@@ -29,6 +31,10 @@ pub mod neural_network {
 
     impl<T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<Layer> {
         fn init_model(model: T) {}
+
+        fn train_model(model: T) {}
+
+        fn test_model(model: T) {}
 
         fn eval_model(model: T) {}
     }
@@ -390,7 +396,7 @@ pub mod neural_network {
     }
 }
 
-//im already too deep, the kernel misspelling will be fixed at the end
+
 pub mod convolutional_neural_network {
     use super::*;
     use crate::housing_price_dataset::generate_training_dataset;
@@ -402,6 +408,10 @@ pub mod convolutional_neural_network {
         for Vec<ConvolutionalBlock>
     {
         fn init_model(model: T) {}
+
+        fn train_model(model: T) {}
+
+        fn test_model(model: T) {}
 
         fn eval_model(model: T) {}
     }
@@ -435,6 +445,7 @@ pub mod convolutional_neural_network {
     }
 
     //used for optimization
+    #[derive(Debug, Clone)]
     struct BlockCache {
         prev_input: Vec<Vec<Vec<f64>>>,
         //same as pre-pool
@@ -720,7 +731,7 @@ pub mod convolutional_neural_network {
         pooling_stride: &usize,
         pooling_type: &PoolingType,
     ) -> Vec<ConvolutionalBlock> {
-        assert!(number_of_conv_blocks.clone() >= 1);
+        assert!(*number_of_conv_blocks >= 1);
         //the indices of kernel_size and kernel_stride represent their respective kernel sizes and strides at that convolutional block
         let mut convolutional_base: Vec<ConvolutionalBlock> = Vec::new();
         //base, the next convolutional blocks will have different inputs
@@ -790,8 +801,10 @@ pub mod convolutional_neural_network {
         images: &Vec<Vec<Vec<f64>>>,
         labels: &Vec<Vec<f64>>,
         model: &mut (Vec<ConvolutionalBlock>, Option<Vec<neural_network::Layer>>),
-        model_settings: neural_network::ModelSettings,
-        loss_function: Option<LossFunctionCnn>,
+        model_settings: &neural_network::ModelSettings,
+        activation_function: &neural_network::ActivationFunction,
+        loss_function: &Option<LossFunctionCnn>,
+        dataset_type: &AvailableDatasets,
     ) -> Vec<f64> {
         assert!(
             images
@@ -826,6 +839,7 @@ pub mod convolutional_neural_network {
                         cnn_forward_pass(
                             &mut model.0,
                             &vec![image.clone()],
+                            //make this dynamic
                             &ActivationFunctionCnn::ReLu,
                         );
                     images_cache.push(cache);
@@ -845,9 +859,12 @@ pub mod convolutional_neural_network {
                 if model.1.is_none() {
                     model.1 = Some(neural_network::init_model(
                         &model_settings.number_of_neurons_hidden_layer,
-                        neural_network::init_input_layer(&Vec::new()),
+                        neural_network::init_input_layer(&vec![
+                            vec![0.0; flattened_images[0].len()];
+                            flattened_images.len()
+                        ]),
                         &model_settings.number_of_hidden_layers,
-                        &AvailableDatasets::Numbers,
+                        dataset_type,
                     ));
                 }
 
@@ -855,7 +872,7 @@ pub mod convolutional_neural_network {
                 let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
                     model.1.as_mut().unwrap(),
                     &flattened_images,
-                    &neural_network::ActivationFunction::Softmax,
+                    activation_function,
                 );
 
                 total +=
@@ -883,11 +900,45 @@ pub mod convolutional_neural_network {
             let avg: f64 = total / batches as f64;
             cost_history.push(avg);
 
-            if epoch % 100 == 0 {
-                println!("Epoch {} Cost: {}", epoch, avg);
-            }
+            // if epoch % 100 == 0 {
+            //     println!("Epoch {} Cost: {}", epoch, avg);
+            // }
+
+            println!("Epoch {} Cost: {}", epoch, avg);
         }
         cost_history
+    }
+
+    pub fn test_mode(
+        model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
+        testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
+    ) {
+        let mut flattened_images: Vec<Vec<f64>> = Vec::new();
+
+        for testing_image in &testing_split_data.0 {
+            let (cnn_output, _): (Vec<Vec<Vec<f64>>>, Vec<BlockCache>) = cnn_forward_pass(
+                &mut model.0,
+                &vec![testing_image.clone()],
+                //make this dynamic
+                &ActivationFunctionCnn::ReLu,
+            );
+            flattened_images.push(flatten(&cnn_output));
+        }
+
+        let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
+            &mut model.1,
+            &flattened_images,
+            &neural_network::ActivationFunction::Softmax,
+        );
+
+        let (mut squared_sum, mut abs_sum, mut correct_predictions): (f64, f64, f64) =
+            (0.0, 0.0, 0.0);
+
+        //predictions: vec![probability; 10]
+        //label: vec!num]
+        //find the index with the greatest probability then compare using indices
+
+        let accuracy: f64 = correct_predictions / prediction.len() as f64;
     }
 
     pub fn gradient_descent_cnn(
@@ -968,7 +1019,13 @@ pub mod convolutional_neural_network {
                 for col in 0..dz[kernel_index][row].len() {
                     //gradient used for optimizing kernel and bias
                     let gradient = dz[kernel_index][row][col];
+                    if dz[kernel_index][row][col] == 0.0 {
+                        continue;
+                    } else {
+                        let gradient = dz[kernel_index][row][col];
+                    }
                     //bias_gradient[kernel_index] is the bias matrix used for the kernel_index'th kernel
+                    // println!("{}", gradient);
                     bias_gradient[kernel_index] += gradient;
                     //kernel channels == prev_input.len(), so indexing matches
                     for channel in 0..prev_input.len() {
@@ -1156,3 +1213,5 @@ pub mod convolutional_neural_network {
         dot_product
     }
 }
+
+pub mod decision_tree {}
