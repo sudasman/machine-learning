@@ -396,7 +396,6 @@ pub mod neural_network {
     }
 }
 
-
 pub mod convolutional_neural_network {
     use super::*;
     use crate::housing_price_dataset::generate_training_dataset;
@@ -934,11 +933,26 @@ pub mod convolutional_neural_network {
         let (mut squared_sum, mut abs_sum, mut correct_predictions): (f64, f64, f64) =
             (0.0, 0.0, 0.0);
 
+        let (mut max_prob, mut index): (f64, usize) = (0.0, 0);
+
+        for (prediction, label) in prediction.iter().zip(&testing_split_data.1) {
+            for i in 0..prediction.len() {
+                (max_prob, index) = if max_prob < prediction[i] {
+                    (prediction[i], i)
+                } else {
+                    (max_prob, index)
+                };
+            }
+            if index as f64 == label[0] {
+                correct_predictions += 1.0
+            }
+        }
         //predictions: vec![probability; 10]
         //label: vec!num]
         //find the index with the greatest probability then compare using indices
 
         let accuracy: f64 = correct_predictions / prediction.len() as f64;
+        dbg!(accuracy);
     }
 
     pub fn gradient_descent_cnn(
