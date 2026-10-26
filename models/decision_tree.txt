@@ -1,0 +1,3 @@
+recursively splitting to create the tree, much like a traversal
+have each node be a struct that contains relvent information such as the question, purity, gini, etc
+the questions for each node should be label specfiic (this prevents the questions being hardcoded)
