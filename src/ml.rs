@@ -39,7 +39,7 @@ pub mod neural_network {
         fn eval_model(model: T) {}
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
     pub struct Layer {
         pub neurons: usize,
         pub input_matrix: Vec<Vec<f64>>,
@@ -401,8 +401,8 @@ pub mod convolutional_neural_network {
     use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
+    use serde::*;
     use std::f64::{MAX, NEG_INFINITY};
-
     impl<T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T>
         for Vec<ConvolutionalBlock>
     {
@@ -415,7 +415,7 @@ pub mod convolutional_neural_network {
         fn eval_model(model: T) {}
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct ConvolutionalLayer {
         //tensor inputs
         input: Vec<Vec<Vec<f64>>>,
@@ -427,7 +427,7 @@ pub mod convolutional_neural_network {
         activation_function: ActivationFunctionCnn,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct PoolingLayer {
         //will be using only squares as well
         pooling_window: usize,
@@ -435,7 +435,7 @@ pub mod convolutional_neural_network {
         pooling_type: PoolingType,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct ConvolutionalBlock {
         conv_layer: ConvolutionalLayer,
         pooling_layer: PoolingLayer,
@@ -452,13 +452,13 @@ pub mod convolutional_neural_network {
     }
 
     //hey future me, if you ever want to make this code more presentable, remove the amount of cloning with references
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
     pub enum PoolingType {
         MaxPooling,
         AveragePooling,
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
     pub enum ActivationFunctionCnn {
         ReLu,
         //wont impl the rest for now
@@ -911,7 +911,7 @@ pub mod convolutional_neural_network {
     pub fn test_model(
         model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
         testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
-    ) {
+    ) -> f64 {
         let mut flattened_images: Vec<Vec<f64>> = Vec::new();
 
         for testing_image in &testing_split_data.0 {
@@ -946,7 +946,8 @@ pub mod convolutional_neural_network {
         }
 
         let accuracy: f64 = correct_predictions / prediction.len() as f64;
-        dbg!(accuracy);
+        println!("{}", accuracy);
+        accuracy
     }
 
     pub fn gradient_descent_cnn(
