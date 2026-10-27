@@ -53,6 +53,4 @@ pub fn new() {
     ));
 
     neural_network::test_model(&mut model, &split_dataset.1, 219000.0, 935000.0, 15000.0);
-
-    
 }

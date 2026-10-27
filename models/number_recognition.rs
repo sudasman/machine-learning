@@ -48,15 +48,20 @@ pub fn new() {
 
     // number_dataset::normalize(&mut training_set.0);
     // number_dataset::normalize(&mut testing_set.0);
-    let training_cost_history: Vec<f64> = convolutional_neural_network::train_model_cnn(
-        &training_set.0[0..36].to_vec(),
-        &training_set.1[0..36].to_vec(),
-        &mut (model_cnn, None),
-        &model_settings,
-        &ml::neural_network::ActivationFunction::Softmax,
-        &Some(convolutional_neural_network::LossFunctionCnn::CrossEntropyLoss),
-        &ml::AvailableDatasets::Numbers,
-    );
+    let (training_cost_history, dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
+        convolutional_neural_network::train_model_cnn(
+            &training_set.0[0..36].to_vec(),
+            &training_set.1[0..36].to_vec(),
+            &mut (model_cnn.clone(), None),
+            &model_settings,
+            &ml::neural_network::ActivationFunction::Softmax,
+            &Some(convolutional_neural_network::LossFunctionCnn::CrossEntropyLoss),
+            &ml::AvailableDatasets::Numbers,
+        );
 
+    convolutional_neural_network::test_model(
+        &mut (model_cnn, dense_network),
+        &(testing_set.0[0..36].to_vec(), testing_set.1[0..36].to_vec()),
+    );
     // dbg!(thing);
 }

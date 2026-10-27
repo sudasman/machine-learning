@@ -39,7 +39,7 @@ pub mod neural_network {
         fn eval_model(model: T) {}
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct Layer {
         pub neurons: usize,
         pub input_matrix: Vec<Vec<f64>>,
@@ -415,7 +415,7 @@ pub mod convolutional_neural_network {
         fn eval_model(model: T) {}
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct ConvolutionalLayer {
         //tensor inputs
         input: Vec<Vec<Vec<f64>>>,
@@ -427,7 +427,7 @@ pub mod convolutional_neural_network {
         activation_function: ActivationFunctionCnn,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct PoolingLayer {
         //will be using only squares as well
         pooling_window: usize,
@@ -435,7 +435,7 @@ pub mod convolutional_neural_network {
         pooling_type: PoolingType,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct ConvolutionalBlock {
         conv_layer: ConvolutionalLayer,
         pooling_layer: PoolingLayer,
@@ -804,7 +804,7 @@ pub mod convolutional_neural_network {
         activation_function: &neural_network::ActivationFunction,
         loss_function: &Option<LossFunctionCnn>,
         dataset_type: &AvailableDatasets,
-    ) -> Vec<f64> {
+    ) -> (Vec<f64>, Vec<neural_network::Layer>) {
         assert!(
             images
                 .iter()
@@ -905,10 +905,10 @@ pub mod convolutional_neural_network {
 
             println!("Epoch {} Cost: {}", epoch, avg);
         }
-        cost_history
+        (cost_history, model.1.as_ref().unwrap().clone())
     }
 
-    pub fn test_mode(
+    pub fn test_model(
         model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
         testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
     ) {
@@ -933,23 +933,17 @@ pub mod convolutional_neural_network {
         let (mut squared_sum, mut abs_sum, mut correct_predictions): (f64, f64, f64) =
             (0.0, 0.0, 0.0);
 
-        let (mut max_prob, mut index): (f64, usize) = (0.0, 0);
-
-        for (prediction, label) in prediction.iter().zip(&testing_split_data.1) {
-            for i in 0..prediction.len() {
-                (max_prob, index) = if max_prob < prediction[i] {
-                    (prediction[i], i)
-                } else {
-                    (max_prob, index)
-                };
-            }
-            if index as f64 == label[0] {
+        for (probabilities, label) in prediction.iter().zip(&testing_split_data.1) {
+            let predicted_class = probabilities
+                .iter()
+                .enumerate()
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .map(|(i, _)| i)
+                .unwrap();
+            if predicted_class == label[0] as usize {
                 correct_predictions += 1.0
             }
         }
-        //predictions: vec![probability; 10]
-        //label: vec!num]
-        //find the index with the greatest probability then compare using indices
 
         let accuracy: f64 = correct_predictions / prediction.len() as f64;
         dbg!(accuracy);
