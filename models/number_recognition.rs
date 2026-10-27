@@ -1,7 +1,13 @@
 use crate::ml::{self, convolutional_neural_network};
 use crate::number_dataset;
 
-pub fn new() {
+pub fn new() -> (
+    (
+        Vec<convolutional_neural_network::ConvolutionalBlock>,
+        Vec<ml::neural_network::Layer>,
+    ),
+    f64,
+) {
     //training_set = (training_images, training_labels)
     //testing_set = (testing_images, testing_labels)
     let (mut training_set, mut testing_set): (
@@ -17,7 +23,7 @@ pub fn new() {
         number_of_hidden_layers: 2,
         learning_rate: 0.1,
         batch_size: 10,
-        epochs: 200,
+        epochs: 50,
     };
 
     let cnn_model_settings: convolutional_neural_network::cnn_model_settings =
@@ -59,9 +65,11 @@ pub fn new() {
             &ml::AvailableDatasets::Numbers,
         );
 
-    convolutional_neural_network::test_model(
-        &mut (model_cnn, dense_network),
+    let accuracy: f64 = convolutional_neural_network::test_model(
+        //fix the clones, it increases runtime duration
+        &mut (model_cnn.clone(), dense_network.clone()),
         &(testing_set.0[0..36].to_vec(), testing_set.1[0..36].to_vec()),
     );
     // dbg!(thing);
+    ((model_cnn, dense_network), accuracy)
 }
