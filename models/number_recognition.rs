@@ -21,16 +21,16 @@ pub fn new() -> (
     let model_settings: ml::neural_network::ModelSettings = ml::neural_network::ModelSettings {
         number_of_neurons_hidden_layer: vec![32, 16],
         number_of_hidden_layers: 2,
-        learning_rate: 0.1,
-        batch_size: 10,
-        epochs: 20,
+        learning_rate: 0.15,
+        batch_size: 32,
+        epochs: 100,
     };
 
     let cnn_model_settings: convolutional_neural_network::cnn_model_settings =
         convolutional_neural_network::cnn_model_settings {
             number_of_conv_blocks: 1,
             //index corresponds to each block
-            number_of_kernels: vec![8],
+            number_of_kernels: vec![12],
             kernel_size: vec![3],
             kernel_stride: vec![3],
             activation_type: convolutional_neural_network::ActivationFunctionCnn::ReLu,
@@ -40,7 +40,7 @@ pub fn new() -> (
             pooling_type: convolutional_neural_network::PoolingType::MaxPooling,
         };
 
-    let model_cnn: Vec<convolutional_neural_network::ConvolutionalBlock> =
+    let mut model_cnn: Vec<convolutional_neural_network::ConvolutionalBlock> =
         convolutional_neural_network::init_cnn(
             &Vec::new(),
             &cnn_model_settings.number_of_conv_blocks,
@@ -55,12 +55,13 @@ pub fn new() -> (
 
     // number_dataset::normalize(&mut training_set.0);
     // number_dataset::normalize(&mut testing_set.0);
-    let slice: usize = 36;
-    let (training_cost_history, dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
+    let slice: usize = 300;
+    let (training_cost_history, mut dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
         convolutional_neural_network::train_model_cnn(
             &training_set.0[0..slice].to_vec(),
             &training_set.1[0..slice].to_vec(),
-            &mut (model_cnn.clone(), None),
+            &mut model_cnn,
+            None,
             &model_settings,
             &ml::neural_network::ActivationFunction::Softmax,
             &Some(convolutional_neural_network::LossFunctionCnn::CrossEntropyLoss),
@@ -69,7 +70,8 @@ pub fn new() -> (
 
     let accuracy: f64 = convolutional_neural_network::test_model(
         //fix the clones, it increases runtime duration
-        &mut (model_cnn.clone(), dense_network.clone()),
+        &mut model_cnn,
+        &mut dense_network,
         &(
             testing_set.0[0..slice].to_vec(),
             testing_set.1[0..slice].to_vec(),

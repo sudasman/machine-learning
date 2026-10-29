@@ -201,7 +201,7 @@ pub mod neural_network {
                 let output_layer: Layer = Layer::new(
                     apply_activation_function(
                         ActivationFunction::Sigmoid,
-                        model[model.len() - 1].weighted_sum_matrix.clone(),
+                        &model[model.len() - 1].weighted_sum_matrix,
                     ),
                     1,
                 );
@@ -211,7 +211,7 @@ pub mod neural_network {
                 let output_layer: Layer = Layer::new(
                     apply_activation_function(
                         ActivationFunction::Sigmoid,
-                        model[model.len() - 1].weighted_sum_matrix.clone(),
+                        &model[model.len() - 1].weighted_sum_matrix,
                     ),
                     10,
                 );
@@ -235,7 +235,7 @@ pub mod neural_network {
             let hidden_layer: Layer = Layer::new(
                 apply_activation_function(
                     ActivationFunction::Sigmoid,
-                    layers[layers.len() - 1].weighted_sum_matrix.clone(),
+                    &layers[layers.len() - 1].weighted_sum_matrix,
                 ),
                 number_of_neurons_hidden_layer[i],
             );
@@ -257,7 +257,7 @@ pub mod neural_network {
 
     pub fn apply_activation_function(
         activation_type: ActivationFunction,
-        weighted_sum_matrix: Vec<Vec<f64>>,
+        weighted_sum_matrix: &Vec<Vec<f64>>,
     ) -> Vec<Vec<f64>> {
         let mut res: Vec<Vec<f64>> = Vec::new();
         match activation_type {
@@ -293,7 +293,7 @@ pub mod neural_network {
                 match activation_function {
                     ActivationFunction::Softmax => apply_activation_function(
                         ActivationFunction::Softmax,
-                        layer.weighted_sum_matrix.clone(),
+                        &layer.weighted_sum_matrix,
                     ),
                     _ => layer.weighted_sum_matrix.clone(),
                 }
@@ -301,7 +301,7 @@ pub mod neural_network {
                 //new input layer is just the weighted sum matrix after a activation fucntion of the previous layer
                 apply_activation_function(
                     ActivationFunction::Sigmoid,
-                    layer.weighted_sum_matrix.clone(),
+                    &layer.weighted_sum_matrix,
                 )
             };
         }
@@ -801,7 +801,8 @@ pub mod convolutional_neural_network {
     pub fn train_model_cnn(
         images: &Vec<Vec<Vec<f64>>>,
         labels: &Vec<Vec<f64>>,
-        model: &mut (Vec<ConvolutionalBlock>, Option<Vec<neural_network::Layer>>),
+        cnn_model: &mut Vec<ConvolutionalBlock>,
+        mut dense_model: Option<Vec<neural_network::Layer>>,
         model_settings: &neural_network::ModelSettings,
         activation_function: &neural_network::ActivationFunction,
         loss_function: &Option<LossFunctionCnn>,
@@ -838,7 +839,7 @@ pub mod convolutional_neural_network {
                     //passed in as [channel][row][col], where channel == 1
                     let (cnn_output, cache): (Vec<Vec<Vec<f64>>>, Vec<BlockCache>) =
                         cnn_forward_pass(
-                            &mut model.0,
+                            cnn_model,
                             &vec![image.clone()],
                             //make this dynamic
                             &ActivationFunctionCnn::ReLu,
@@ -857,8 +858,8 @@ pub mod convolutional_neural_network {
 
                 //please future me fix this init_input_layer function, its so horrid (forward pass overwrites whatever you input into it)
                 //if statement prevents the dense layer being reinitialized every batch
-                if model.1.is_none() {
-                    model.1 = Some(neural_network::init_model(
+                if dense_model.is_none() {
+                    dense_model = Some(neural_network::init_model(
                         &model_settings.number_of_neurons_hidden_layer,
                         neural_network::init_input_layer(&vec![
                             vec![0.0; flattened_images[0].len()];
@@ -871,7 +872,7 @@ pub mod convolutional_neural_network {
 
                 //need to initialze model.1 with output_dim
                 let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
-                    model.1.as_mut().unwrap(),
+                    dense_model.as_mut().unwrap(),
                     &flattened_images,
                     activation_function,
                 );
@@ -882,7 +883,7 @@ pub mod convolutional_neural_network {
                 let delta = softmax_cross_entropy_grad(&prediction, &label_batch);
 
                 let extract_delta: Vec<Vec<f64>> = neural_network::backward_pass(
-                    model.1.as_mut().unwrap(),
+                    dense_model.as_mut().unwrap(),
                     delta,
                     model_settings.learning_rate.clone(),
                 );
@@ -891,7 +892,7 @@ pub mod convolutional_neural_network {
                 let grad: Vec<Vec<Vec<Vec<f64>>>> = unflatten(&extract_delta, &output_dim);
 
                 gradient_descent_cnn(
-                    &mut model.0,
+                    cnn_model,
                     &grad,
                     &model_settings.learning_rate,
                     &images_cache,
@@ -907,18 +908,19 @@ pub mod convolutional_neural_network {
 
             println!("Epoch {} Cost: {}", epoch, avg);
         }
-        (cost_history, model.1.as_ref().unwrap().clone())
+        (cost_history, dense_model.unwrap())
     }
 
     pub fn test_model(
-        model: &mut (Vec<ConvolutionalBlock>, Vec<neural_network::Layer>),
+        cnn_model: &mut Vec<ConvolutionalBlock>,
+        dense_model: &mut Vec<neural_network::Layer>,
         testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
     ) -> f64 {
         let mut flattened_images: Vec<Vec<f64>> = Vec::new();
 
         for testing_image in &testing_split_data.0 {
             let (cnn_output, _): (Vec<Vec<Vec<f64>>>, Vec<BlockCache>) = cnn_forward_pass(
-                &mut model.0,
+                cnn_model,
                 &vec![testing_image.clone()],
                 //make this dynamic
                 &ActivationFunctionCnn::ReLu,
@@ -927,7 +929,7 @@ pub mod convolutional_neural_network {
         }
 
         let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
-            &mut model.1,
+            dense_model,
             &flattened_images,
             &neural_network::ActivationFunction::Softmax,
         );
