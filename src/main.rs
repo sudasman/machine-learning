@@ -28,15 +28,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         model: (model_cnn, dense_network),
         accuracy,
     };
-    
+
     //todo: save the housing price model too
 
     if let Ok(saved_model) =
-        save::load_model::<SavedModel>("models/number_recognition_model_parameters/cnn_model.json")
+        //turbo fish annotation required here
+        save::load_model::<SavedModel>(
+            "models/number_recognition_model_parameters/cnn_model.json",
+        )
     {
         if new_saved_model.accuracy > saved_model.accuracy {
             save::save_model(
-                &saved_model,
+                &new_saved_model,
                 "models/number_recognition_model_parameters/cnn_model.json",
             )?;
             println!("Model Saved");
