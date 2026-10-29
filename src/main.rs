@@ -24,15 +24,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         f64,
     ) = number_recognition::new();
 
-    let saved_model: SavedModel = SavedModel {
+    let new_saved_model: SavedModel = SavedModel {
         model: (model_cnn, dense_network),
         accuracy,
     };
+    
     //todo: save the housing price model too
-    save::save_model(
-        &saved_model,
-        "models/number_recognition_model_parameters/cnn_model.json",
-    )?;
+
+    if let Ok(saved_model) =
+        save::load_model::<SavedModel>("models/number_recognition_model_parameters/cnn_model.json")
+    {
+        if new_saved_model.accuracy > saved_model.accuracy {
+            save::save_model(
+                &saved_model,
+                "models/number_recognition_model_parameters/cnn_model.json",
+            )?;
+            println!("Model Saved");
+        }
+    }
     Ok(())
 }
 
+fn save_dense_mode() {}
+
+fn save_cnn_model() {}
