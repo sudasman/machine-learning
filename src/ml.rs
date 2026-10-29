@@ -458,6 +458,7 @@ pub mod convolutional_neural_network {
         AveragePooling,
     }
 
+    #[non_exhaustive]
     #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
     pub enum ActivationFunctionCnn {
         ReLu,
@@ -690,6 +691,7 @@ pub mod convolutional_neural_network {
                 input
                     .iter()
                     .map(|channel| {
+                        //integer overflow possibility usize < 0
                         (0..(input[0].len() - pooling_window) / pooling_stride + 1)
                             .map(|i| {
                                 (0..(input[0][0].len() - pooling_window) / pooling_stride + 1)
@@ -946,7 +948,7 @@ pub mod convolutional_neural_network {
         }
 
         let accuracy: f64 = correct_predictions / prediction.len() as f64;
-        println!("{}", accuracy);
+        println!("{}%", accuracy * 100.0);
         accuracy
     }
 

@@ -15,7 +15,7 @@ pub fn save_model<T: serde::Serialize>(
 
 pub fn load_model<T>(path: &str) -> Result<T, Box<dyn std::error::Error>>
 where
-    //could also use deserialzeowned but higher ranked trait bounds are pretty cool
+    //could also use deserialzeowned
     T: for<'a> serde::Deserialize<'a>,
 {
     let reader = BufReader::new(File::open(path)?);
