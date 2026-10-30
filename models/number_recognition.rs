@@ -56,7 +56,7 @@ pub fn new() -> (
     // number_dataset::normalize(&mut training_set.0);
     // number_dataset::normalize(&mut testing_set.0);
     //60k images
-    let slice: usize = 5000;
+    let slice: usize = 10000;
     let (training_cost_history, mut dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
         convolutional_neural_network::train_model_cnn(
             &training_set.0[0..slice].to_vec(),
@@ -81,3 +81,6 @@ pub fn new() -> (
     // dbg!(thing);
     ((model_cnn, dense_network), accuracy)
 }
+
+
+//line of credit == plug (working capital)
