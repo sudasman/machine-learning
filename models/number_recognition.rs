@@ -30,7 +30,7 @@ pub fn new() -> (
         convolutional_neural_network::cnn_model_settings {
             number_of_conv_blocks: 1,
             //index corresponds to each block
-            number_of_kernels: vec![12],
+            number_of_kernels: vec![8],
             kernel_size: vec![3],
             kernel_stride: vec![3],
             activation_type: convolutional_neural_network::ActivationFunctionCnn::ReLu,
@@ -55,7 +55,8 @@ pub fn new() -> (
 
     // number_dataset::normalize(&mut training_set.0);
     // number_dataset::normalize(&mut testing_set.0);
-    let slice: usize = 300;
+    //60k images
+    let slice: usize = 5000;
     let (training_cost_history, mut dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
         convolutional_neural_network::train_model_cnn(
             &training_set.0[0..slice].to_vec(),
