@@ -83,7 +83,6 @@ pub fn new() -> (
     ((model_cnn, dense_network), accuracy)
 }
 
-
 //line of credit == plug (working capital)
 //why
 //what

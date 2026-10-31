@@ -1,53 +1,17 @@
 use machine_learning::housing_price_predictor;
 use machine_learning::number_recognition;
-use serde_json;
 mod save;
 
-type Model = (
-    Vec<machine_learning::ml::convolutional_neural_network::ConvolutionalBlock>,
-    Vec<machine_learning::ml::neural_network::Layer>,
-);
+//cargo run --release --features train
+#[cfg(feature = "train")]
+fn main() {
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct SavedModel {
-    pub model: Model,
-    pub accuracy: f64,
+    //train and save the model if better performance (experimental)
+    machine_learning::ml::train_and_save_cnn_model(
+        machine_learning::ml::AvailableDatasets::Numbers,
+    );
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    //housing_price_predictor::new();
-    let ((model_cnn, dense_network), accuracy): (
-        (
-            Vec<machine_learning::ml::convolutional_neural_network::ConvolutionalBlock>,
-            Vec<machine_learning::ml::neural_network::Layer>,
-        ),
-        f64,
-    ) = number_recognition::new();
+#[cfg(not(feature = "train"))]
+fn main() {}
 
-    let new_saved_model: SavedModel = SavedModel {
-        model: (model_cnn, dense_network),
-        accuracy,
-    };
-
-    //todo: save the housing price model too
-
-    if let Ok(saved_model) =
-        //turbo fish annotation required here
-        save::load_model::<SavedModel>(
-            "models/number_recognition_model_parameters/cnn_model.json",
-        )
-    {
-        if new_saved_model.accuracy > saved_model.accuracy {
-            save::save_model(
-                &new_saved_model,
-                "models/number_recognition_model_parameters/cnn_model.json",
-            )?;
-            println!("Model Saved");
-        }
-    }
-    Ok(())
-}
-
-fn save_dense_mode() {}
-
-fn save_cnn_model() {}

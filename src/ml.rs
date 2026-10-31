@@ -1,6 +1,8 @@
 //add regularization such as L1/L2, Dropout, Early Stopping, and Batch Normalization
 
 use crate::macros;
+use crate::number_recognition;
+use crate::save;
 
 pub trait MachineLearning<T: std::fmt::Debug + Clone + std::fmt::Display> {
     fn init_model(model: T) {}
@@ -18,9 +20,64 @@ pub enum Models {
     ConvolutionalNeuralNetwork,
 }
 
+#[non_exhaustive]
 pub enum AvailableDatasets {
     Housing,
     Numbers,
+}
+
+pub type Model = (
+    Vec<convolutional_neural_network::ConvolutionalBlock>,
+    Vec<neural_network::Layer>,
+);
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SavedModel {
+    pub model: Model,
+    pub accuracy: f64,
+}
+
+pub fn train_and_save_dense_mode() {}
+
+pub fn train_and_save_cnn_model(
+    dataset: AvailableDatasets,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match dataset {
+        AvailableDatasets::Numbers => {
+            let ((model_cnn, dense_network), accuracy): (
+                (
+                    Vec<convolutional_neural_network::ConvolutionalBlock>,
+                    Vec<neural_network::Layer>,
+                ),
+                f64,
+            ) = number_recognition::new();
+
+            let new_saved_model: SavedModel = SavedModel {
+                model: (model_cnn, dense_network),
+                accuracy,
+            };
+
+            if let Ok(saved_model) =
+                //turbo fish annotation required here
+                save::load_model::<SavedModel>(
+                    "models/number_recognition_model_parameters/cnn_model.json",
+                )
+            {
+                if new_saved_model.accuracy > saved_model.accuracy {
+                    save::save_model(
+                        &new_saved_model,
+                        "models/number_recognition_model_parameters/cnn_model.json",
+                    )?;
+                    println!("Model Saved");
+                }
+            }
+        }
+        _ => {
+            return Err(std::io::Error::other("No dataset provided").into());
+        }
+    }
+
+    Ok(())
 }
 
 pub mod neural_network {
@@ -299,10 +356,7 @@ pub mod neural_network {
                 }
             } else {
                 //new input layer is just the weighted sum matrix after a activation fucntion of the previous layer
-                apply_activation_function(
-                    ActivationFunction::Sigmoid,
-                    &layer.weighted_sum_matrix,
-                )
+                apply_activation_function(ActivationFunction::Sigmoid, &layer.weighted_sum_matrix)
             };
         }
         let prediction = input.clone();
@@ -906,7 +960,7 @@ pub mod convolutional_neural_network {
             //     println!("Epoch {} Cost: {}", epoch, avg);
             // }
 
-            println!("Epoch {} Cost: {}", epoch, avg);
+            println!("Epoch {} Cost: {}", epoch + 1, avg);
         }
         (cost_history, dense_model.unwrap())
     }
