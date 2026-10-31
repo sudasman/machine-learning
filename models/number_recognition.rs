@@ -56,11 +56,12 @@ pub fn new() -> (
     // number_dataset::normalize(&mut training_set.0);
     // number_dataset::normalize(&mut testing_set.0);
     //60k images
-    let slice: usize = 10000;
+    let slice_training: usize = 60000;
+    let slice_testing: usize = 10000;
     let (training_cost_history, mut dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
         convolutional_neural_network::train_model_cnn(
-            &training_set.0[0..slice].to_vec(),
-            &training_set.1[0..slice].to_vec(),
+            &training_set.0[0..slice_training].to_vec(),
+            &training_set.1[0..slice_training].to_vec(),
             &mut model_cnn,
             None,
             &model_settings,
@@ -74,8 +75,8 @@ pub fn new() -> (
         &mut model_cnn,
         &mut dense_network,
         &(
-            testing_set.0[0..slice].to_vec(),
-            testing_set.1[0..slice].to_vec(),
+            testing_set.0[0..slice_testing].to_vec(),
+            testing_set.1[0..slice_testing].to_vec(),
         ),
     );
     // dbg!(thing);
@@ -84,3 +85,9 @@ pub fn new() -> (
 
 
 //line of credit == plug (working capital)
+//why
+//what
+//so what
+//what happens because
+//future projection
+//recommendation
