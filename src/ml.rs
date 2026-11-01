@@ -968,8 +968,11 @@ pub mod convolutional_neural_network {
     pub fn test_model(
         cnn_model: &mut Vec<ConvolutionalBlock>,
         dense_model: &mut Vec<neural_network::Layer>,
+        //(image, label)
         testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
-    ) -> f64 {
+    ) -> (f64, Vec<Vec<f64>>) {
+        assert!(testing_split_data.0.len() == testing_split_data.1.len());
+
         let mut flattened_images: Vec<Vec<f64>> = Vec::new();
 
         for testing_image in &testing_split_data.0 {
@@ -1004,8 +1007,10 @@ pub mod convolutional_neural_network {
         }
 
         let accuracy: f64 = correct_predictions / prediction.len() as f64;
+
         println!("{}%", accuracy * 100.0);
-        accuracy
+
+        (accuracy, prediction)
     }
 
     pub fn gradient_descent_cnn(

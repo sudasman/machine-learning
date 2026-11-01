@@ -70,7 +70,7 @@ pub fn new() -> (
             &ml::AvailableDatasets::Numbers,
         );
 
-    let accuracy: f64 = convolutional_neural_network::test_model(
+    let (accuracy, _): (f64, Vec<Vec<f64>>) = convolutional_neural_network::test_model(
         //fix the clones, it increases runtime duration
         &mut model_cnn,
         &mut dense_network,

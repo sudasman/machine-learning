@@ -1,5 +1,5 @@
+use rand::*;
 use std::fs;
-
 fn read_u32(bytes: &[u8], offset: usize) -> u32 {
     //relative addressing
     //be -> big endian -> most significant byte first (reading left to right), little endian is the opposite
@@ -100,6 +100,17 @@ pub fn load_dataset() -> (
         (training_images, training_labels),
         (testing_images, testing_labels),
     )
+}
+
+pub fn grab_random_image() -> (Vec<Vec<f64>>, Vec<f64>) {
+    let mut rng = rand::rng();
+    //choose from the 60,000 training images
+    let random = rng.random_range(0..60000);
+
+    let images: Vec<Vec<Vec<f64>>> = load_images("datasets/mnist/train-images.idx3-ubyte");
+    let labels: Vec<Vec<f64>> = load_labels("datasets/mnist/train-labels.idx1-ubyte");
+
+    (images[random].clone(), labels[random].clone())
 }
 
 pub fn normalize(images: &mut Vec<Vec<Vec<f64>>>) {
