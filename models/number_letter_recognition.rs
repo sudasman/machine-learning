@@ -1,28 +1,122 @@
 use crate::emnist;
+use crate::ml::{self, convolutional_neural_network};
 use crate::save;
-
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Dataset {
-    labels: Vec<u8>,
+    labels: Vec<Vec<f64>>,
     images: Vec<Vec<Vec<f64>>>,
 }
 
-pub fn new() {
-    let dataset: Dataset = if let Ok(dataset) =
-        save::load_cache::<Dataset>("datasets/emnist/cache/emnist_train.bin")
-    {
+impl Dataset {
+    fn default() -> Self {
+        Dataset {
+            labels: Vec::new(),
+            images: Vec::new(),
+        }
+    }
+}
+
+pub fn new() -> (
+    (
+        Vec<convolutional_neural_network::ConvolutionalBlock>,
+        Vec<ml::neural_network::Layer>,
+    ),
+    f64,
+) {
+    let mut training_dataset: Dataset = Dataset::default();
+    let mut testing_dataset: Dataset = Dataset::default();
+
+    check_cache(
+        &mut training_dataset,
+        "datasets/emnist/cache/emnist_train.bin",
+        "datasets/emnist/emnist-byclass-train.csv",
+    );
+    check_cache(
+        &mut testing_dataset,
+        "datasets/emnist/cache/emnist_testing.bin",
+        "datasets/emnist/emnist-byclass-test.csv",
+    );
+
+    let model_settings: ml::neural_network::ModelSettings = ml::neural_network::ModelSettings {
+        number_of_neurons_hidden_layer: vec![32, 16],
+        number_of_hidden_layers: 2,
+        learning_rate: 0.15,
+        batch_size: 32,
+        epochs: 100,
+    };
+
+    let cnn_model_settings: convolutional_neural_network::cnn_model_settings =
+        convolutional_neural_network::cnn_model_settings {
+            number_of_conv_blocks: 1,
+            //index corresponds to each block
+            number_of_kernels: vec![8],
+            kernel_size: vec![3],
+            kernel_stride: vec![3],
+            activation_type: convolutional_neural_network::ActivationFunctionCnn::ReLu,
+            //integer overflow possibility here
+            pooling_window_size: 3,
+            pooling_stride: 2,
+            pooling_type: convolutional_neural_network::PoolingType::MaxPooling,
+        };
+
+    let mut model_cnn: Vec<convolutional_neural_network::ConvolutionalBlock> =
+        convolutional_neural_network::init_cnn(
+            &Vec::new(),
+            &cnn_model_settings.number_of_conv_blocks,
+            &cnn_model_settings.number_of_kernels,
+            &cnn_model_settings.kernel_size,
+            &cnn_model_settings.kernel_stride,
+            &cnn_model_settings.activation_type,
+            &cnn_model_settings.pooling_window_size,
+            &cnn_model_settings.pooling_stride,
+            &cnn_model_settings.pooling_type,
+        );
+
+    let slice_training: usize = 500;
+    let slice_testing: usize = 200;
+
+    let training_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
+        (training_dataset.images, training_dataset.labels);
+    let testing_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
+        (testing_dataset.images, testing_dataset.labels);
+
+    let (training_cost_history, mut dense_network): (Vec<f64>, Vec<ml::neural_network::Layer>) =
+        convolutional_neural_network::train_model_cnn(
+            &training_set.0[0..slice_training].to_vec(),
+            &training_set.1[0..slice_training].to_vec(),
+            &mut model_cnn,
+            None,
+            &model_settings,
+            &ml::neural_network::ActivationFunction::Softmax,
+            &Some(convolutional_neural_network::LossFunctionCnn::CrossEntropyLoss),
+            &ml::AvailableDatasets::NumbersLetters,
+        );
+
+    let (accuracy, _): (f64, Vec<Vec<f64>>) = convolutional_neural_network::test_model(
+        &mut model_cnn,
+        &mut dense_network,
+        &(
+            testing_set.0[0..slice_testing].to_vec(),
+            testing_set.1[0..slice_testing].to_vec(),
+        ),
+    );
+
+    ((model_cnn, dense_network), accuracy)
+
+    // emnist::display_sample((&dataset.labels, &dataset.images), 1);
+}
+
+fn check_cache(mut dataset: &mut Dataset, path: &str, file: &str) {
+    *dataset = if let Ok(dataset) = save::load_cache::<Dataset>(path) {
         println!("Retrieving cache");
         dataset
     } else {
-        let (labels, images): (Vec<u8>, Vec<Vec<Vec<f64>>>) =
-            emnist::load_csv("datasets/emnist/emnist-byclass-train.csv").expect("invalid path");
+        let (labels, images): (Vec<Vec<f64>>, Vec<Vec<Vec<f64>>>) =
+            emnist::load_csv(file).expect("invalid path");
 
         let dataset: Dataset = Dataset { labels, images };
-        save::cache(&dataset, "datasets/emnist/cache/emnist_train.bin")
-            .expect("Failed to create cache");
+        save::cache(&dataset, path).expect("Failed to create cache");
         println!("cached");
         dataset
     };
-
-    emnist::display_sample((&dataset.labels, &dataset.images), 1);
 }

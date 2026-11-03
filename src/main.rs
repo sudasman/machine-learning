@@ -17,5 +17,7 @@ fn main() {
 fn main() {
     // number_recognition::sample();
 
-    number_letter_recognition::new();
+    machine_learning::ml::train_and_save_cnn_model(
+        machine_learning::ml::AvailableDatasets::NumbersLetters,
+    );
 }

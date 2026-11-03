@@ -1,6 +1,7 @@
 //add regularization such as L1/L2, Dropout, Early Stopping, and Batch Normalization
 
 use crate::macros;
+use crate::number_letter_recognition;
 use crate::number_recognition;
 use crate::save;
 
@@ -68,6 +69,35 @@ pub fn train_and_save_cnn_model(
                     save::save_model(
                         &new_saved_model,
                         "models/number_recognition_model_parameters/cnn_model.json",
+                    )?;
+                    println!("Model Saved");
+                }
+            }
+        }
+        AvailableDatasets::NumbersLetters => {
+            let ((model_cnn, dense_network), accuracy): (
+                (
+                    Vec<convolutional_neural_network::ConvolutionalBlock>,
+                    Vec<neural_network::Layer>,
+                ),
+                f64,
+            ) = number_letter_recognition::new();
+
+            let new_saved_model: SavedModel = SavedModel {
+                model: (model_cnn, dense_network),
+                accuracy,
+            };
+
+            if let Ok(saved_model) =
+                //turbo fish annotation required here
+                save::load_model::<SavedModel>(
+                    "models/number_letter_recognition_model_parameters/cnn_model.json",
+                )
+            {
+                if new_saved_model.accuracy > saved_model.accuracy {
+                    save::save_model(
+                        &new_saved_model,
+                        "models/number_letter_recognition_model_parameters/cnn_model.json",
                     )?;
                     println!("Model Saved");
                 }
@@ -261,17 +291,30 @@ pub mod neural_network {
                         ActivationFunction::Sigmoid,
                         &model[model.len() - 1].weighted_sum_matrix,
                     ),
+                    //hardcoded
                     1,
                 );
                 model.push(output_layer);
             }
-            AvailableDatasets::Numbers | AvailableDatasets::NumbersLetters => {
+            AvailableDatasets::Numbers => {
                 let output_layer: Layer = Layer::new(
                     apply_activation_function(
                         ActivationFunction::Sigmoid,
                         &model[model.len() - 1].weighted_sum_matrix,
                     ),
+                    //hardcoded
                     10,
+                );
+                model.push(output_layer);
+            }
+            AvailableDatasets::NumbersLetters => {
+                let output_layer: Layer = Layer::new(
+                    apply_activation_function(
+                        ActivationFunction::Sigmoid,
+                        &model[model.len() - 1].weighted_sum_matrix,
+                    ),
+                    //hardcoded
+                    62,
                 );
                 model.push(output_layer);
             }
@@ -1003,6 +1046,7 @@ pub mod convolutional_neural_network {
                 .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
                 .map(|(i, _)| i)
                 .unwrap();
+            //predicted_class == index with the highest probability
             if predicted_class == label[0] as usize {
                 correct_predictions += 1.0
             }
@@ -1193,7 +1237,7 @@ pub mod convolutional_neural_network {
                     .enumerate()
                     //labels.[0].len() == 1
                     //labels stores 1d entries of the actual number
-                    //i represents the index of the prediction in predictions -> predictions.len() == 10
+                    //i represents the index of the prediction in predictions -> predictions.len() == n
                     //if i (the prediction) == label[0] (the actual value)
                     .map(|(i, &prediction)| {
                         (prediction - if i == label[0] as usize { 1.0 } else { 0.0 }) / n

@@ -207,7 +207,7 @@ pub mod functions {
     pub fn cross_entropy_loss(prediction: &Vec<Vec<f64>>, actual_value: &Vec<Vec<f64>>) -> f64 {
         let mut total_loss: f64 = 0.0;
 
-        //prediction is a 1d vector with a length of 10 where each index represents the number it predicted
+        //prediction is a 1d vector with a length of n where each index represents the number it predicted
         for (prediction, label) in prediction.iter().zip(actual_value) {
             total_loss -= prediction[label[0] as usize].max(1e-15).ln();
         }
