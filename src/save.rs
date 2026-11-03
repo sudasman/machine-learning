@@ -20,3 +20,22 @@ where
     let reader = BufReader::new(File::open(path)?);
     Ok(serde_json::from_reader(reader)?)
 }
+
+pub fn cache<T: serde::Serialize>(temp: &T, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let writer = BufWriter::new(File::create(path)?);
+
+    bincode::serialize_into(writer, temp)?;
+
+    Ok(())
+}
+
+pub fn load_cache<T>(path: &str) -> Result<T, Box<dyn std::error::Error>>
+where
+    T: for<'a> serde::Deserialize<'a>,
+{
+    let reader = BufReader::new(File::open(path)?);
+
+    let data = bincode::deserialize_from(reader)?;
+
+    Ok(data)
+}

@@ -1,5 +1,6 @@
 use crate::ml::{self, convolutional_neural_network};
 use crate::number_dataset;
+use crate::save;
 
 pub fn new() -> (
     (
@@ -83,10 +84,19 @@ pub fn new() -> (
     ((model_cnn, dense_network), accuracy)
 }
 
-//line of credit == plug (working capital)
-//why
-//what
-//so what
-//what happens because
-//future projection
-//recommendation
+pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
+    let mut model: ml::SavedModel =
+        save::load_model("models/number_recognition_model_parameters/cnn_model.json")?;
+
+    let (image, label) = number_dataset::grab_random_image();
+
+    number_dataset::show_sample_image(&vec![image.clone()], &vec![label.clone()], 0, None);
+    let (_, prediction) = convolutional_neural_network::test_model(
+        &mut model.model.0,
+        &mut model.model.1,
+        &(vec![image.clone()], vec![label.clone()]),
+    );
+
+    println!("Probability Distribution: {:#?}", prediction);
+    Ok(())
+}

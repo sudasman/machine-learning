@@ -1,5 +1,6 @@
 use machine_learning::housing_price_predictor;
 use machine_learning::number_dataset;
+use machine_learning::number_letter_recognition;
 use machine_learning::number_recognition;
 mod save;
 
@@ -13,18 +14,8 @@ fn main() {
 }
 
 #[cfg(not(feature = "train"))]
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model: machine_learning::ml::SavedModel = save::load_model("models/number_recognition_model_parameters/cnn_model.json")?;
+fn main() {
+    // number_recognition::sample();
 
-    let (image, label) = number_dataset::grab_random_image();
-
-    number_dataset::show_sample_image(&vec![image.clone()], &vec![label.clone()], 0, None);
-    let (_, prediction) = machine_learning::ml::convolutional_neural_network::test_model(
-        &mut model.model.0,
-        &mut model.model.1,
-        &(vec![image.clone()], vec![label.clone()]),
-    );
-
-    println!("{:#?}", prediction);
-    Ok(())
+    number_letter_recognition::new();
 }

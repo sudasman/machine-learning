@@ -24,6 +24,7 @@ pub enum Models {
 pub enum AvailableDatasets {
     Housing,
     Numbers,
+    NumbersLetters,
 }
 
 pub type Model = (
@@ -264,7 +265,7 @@ pub mod neural_network {
                 );
                 model.push(output_layer);
             }
-            AvailableDatasets::Numbers => {
+            AvailableDatasets::Numbers | AvailableDatasets::NumbersLetters => {
                 let output_layer: Layer = Layer::new(
                     apply_activation_function(
                         ActivationFunction::Sigmoid,
@@ -861,6 +862,7 @@ pub mod convolutional_neural_network {
         activation_function: &neural_network::ActivationFunction,
         loss_function: &Option<LossFunctionCnn>,
         dataset_type: &AvailableDatasets,
+        // (early_stopping, negligibility): (bool, f64),
     ) -> (Vec<f64>, Vec<neural_network::Layer>) {
         assert!(
             images
@@ -1008,7 +1010,7 @@ pub mod convolutional_neural_network {
 
         let accuracy: f64 = correct_predictions / prediction.len() as f64;
 
-        println!("{}%", accuracy * 100.0);
+        println!("Accuracy: {}%", accuracy * 100.0);
 
         (accuracy, prediction)
     }
@@ -1287,3 +1289,7 @@ pub mod convolutional_neural_network {
 }
 
 pub mod decision_tree {}
+
+pub mod k_means_clustering {}
+
+pub mod random_forest {}
