@@ -1,3 +1,4 @@
 /target
 /datasets/emnist/cache/
 /datasets/emnist/emnist-byclass-train.csv
+/datasets/emnist/emnist-byclass-test.csv
