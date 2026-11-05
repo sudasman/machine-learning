@@ -1,6 +1,6 @@
+use rand::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-
 //csv structure -> row: label, image(grey scaled pixels)
 pub fn load_csv(path: &str) -> std::io::Result<(Vec<Vec<f64>>, Vec<Vec<Vec<f64>>>)> {
     //buffer the read
@@ -49,20 +49,34 @@ pub fn render_labels(mut labels: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     labels
 }
 
-pub fn display_sample((labels, images): (&[Vec<f64>], &[Vec<Vec<f64>>]), index: usize) {
+pub fn display_sample((labels, images): (&[Vec<f64>], &[Vec<Vec<f64>>])) {
     const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-    //without as char it would be the literal ascii value
-    let label = ASCII[labels[index][0] as usize] as char;
 
-    //could also hardcode and do 0..28
-    for rows in images[index].iter() {
-        let line = rows
-            .iter()
-            //|&pixel| (reference destructuring)
-            .map(|pixel| if *pixel > 0.5 { "*" } else { " " })
-            .collect::<String>();
-        println!("{}", line);
+    let label = ASCII[labels[0][0] as usize] as char;
+    
+
+    let rows = images[0].len();
+    let cols = images[0].first().map_or(0, |row| row.len());
+
+    for c in 0..cols {
+        let line: String = (0..rows)
+            .map(|r| if images[0][r][c] > 0.5 { '*' } else { ' ' })
+            .collect();
+
+        println!("{line}");
     }
+
     println!("Label: {}", label);
+}
+
+pub fn grab_random_image<'a>(
+    images: &'a [Vec<Vec<f64>>],
+    labels: &'a [Vec<f64>],
+) -> (&'a [f64], &'a [Vec<f64>]) {
+    let mut rng = rand::rng();
+    //697,932 images
+    let random = rng.random_range(0..1000);
+
+    (&labels[random], &images[random])
 }

@@ -8,16 +8,17 @@ mod save;
 #[cfg(feature = "train")]
 fn main() {
     //train and save the model if better performance (experimental)
-    machine_learning::ml::train_and_save_cnn_model(
-        machine_learning::ml::AvailableDatasets::Numbers,
-    );
-}
 
-#[cfg(not(feature = "train"))]
-fn main() {
-    // number_recognition::sample();
+    // machine_learning::ml::train_and_save_cnn_model(
+    //     machine_learning::ml::AvailableDatasets::Numbers,
+    // );
 
     machine_learning::ml::train_and_save_cnn_model(
         machine_learning::ml::AvailableDatasets::NumbersLetters,
     );
+}
+
+#[cfg(not(feature = "train"))]
+fn main(){
+    number_letter_recognition::sample().expect("Error");
 }

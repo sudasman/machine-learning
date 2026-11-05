@@ -72,6 +72,12 @@ pub fn train_and_save_cnn_model(
                     )?;
                     println!("Model Saved");
                 }
+            } else {
+                save::save_model(
+                    &new_saved_model,
+                    "models/number_recognition_model_parameters/cnn_model.json",
+                )?;
+                println!("Model Saved");
             }
         }
         AvailableDatasets::NumbersLetters => {
@@ -101,6 +107,12 @@ pub fn train_and_save_cnn_model(
                     )?;
                     println!("Model Saved");
                 }
+            } else {
+                save::save_model(
+                    &new_saved_model,
+                    "models/number_letter_recognition_model_parameters/cnn_model.json",
+                )?;
+                println!("Model Saved");
             }
         }
         _ => {
@@ -153,8 +165,8 @@ pub mod neural_network {
             }
         }
 
-        pub fn forward(&mut self, input_matrix: &Vec<Vec<f64>>) {
-            self.input_matrix = input_matrix.clone();
+        pub fn forward(&mut self, input_matrix: &[Vec<f64>]) {
+            self.input_matrix = input_matrix.to_vec();
             self.weighted_sum_matrix =
                 weighted_sum_matrix(&self.input_matrix, &self.weight_matrix, &self.bias_matrix);
         }
@@ -1048,6 +1060,11 @@ pub mod convolutional_neural_network {
                 .unwrap();
             //predicted_class == index with the highest probability
             if predicted_class == label[0] as usize {
+                //hardcoded: emnist specific
+                if probabilities.len() == 62 {
+                    const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+                    println!("Guess: {}", ASCII[predicted_class] as char);
+                }
                 correct_predictions += 1.0
             }
         }

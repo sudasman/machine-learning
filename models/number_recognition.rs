@@ -85,8 +85,13 @@ pub fn new() -> (
 }
 
 pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
-    let mut model: ml::SavedModel =
-        save::load_model("models/number_recognition_model_parameters/cnn_model.json")?;
+    let mut model: ml::SavedModel = if let Ok(model) =
+        save::load_model("models/number_recognition_model_parameters/cnn_model.json")
+    {
+        model
+    } else {
+        panic!("No model saved to sample");
+    };
 
     let (image, label) = number_dataset::grab_random_image();
 
@@ -97,6 +102,8 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
         &(vec![image.clone()], vec![label.clone()]),
     );
 
+
     println!("Probability Distribution: {:#?}", prediction);
+
     Ok(())
 }

@@ -38,8 +38,8 @@ pub fn new() -> (
     );
 
     let model_settings: ml::neural_network::ModelSettings = ml::neural_network::ModelSettings {
-        number_of_neurons_hidden_layer: vec![32, 16],
-        number_of_hidden_layers: 2,
+        number_of_neurons_hidden_layer: vec![128],
+        number_of_hidden_layers: 1,
         learning_rate: 0.15,
         batch_size: 32,
         epochs: 100,
@@ -72,8 +72,8 @@ pub fn new() -> (
             &cnn_model_settings.pooling_type,
         );
 
-    let slice_training: usize = 500;
-    let slice_testing: usize = 200;
+    let slice_training: usize = 10000;
+    let slice_testing: usize = 3000;
 
     let training_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
         (training_dataset.images, training_dataset.labels);
@@ -119,4 +119,37 @@ fn check_cache(mut dataset: &mut Dataset, path: &str, file: &str) {
         println!("cached");
         dataset
     };
+}
+
+pub fn sample() -> Result<(), Box<dyn std::error::Error>>{
+    let mut model = if let Ok(model) = save::load_model::<ml::SavedModel>(
+        "models/number_letter_recognition_model_parameters/cnn_model.json",
+    ) {
+        model
+    } else {
+        panic!("No model saved to sample");
+    };
+    let mut dataset: Dataset = Dataset::default();
+
+    check_cache(
+        &mut dataset,
+        "datasets/emnist/cache/emnist_testing.bin",
+        "datasets/emnist/emnist-byclass-test.csv",
+    );
+
+    let slice = 1000;
+    let (label, image): (&[f64], &[Vec<f64>]) =
+        emnist::grab_random_image(&dataset.images[..slice], &dataset.labels[..slice]);
+
+    emnist::display_sample((&vec![label.to_vec()], &vec![image.to_vec()]));
+
+    let (_, prediction) = convolutional_neural_network::test_model(
+        &mut model.model.0,
+        &mut model.model.1,
+        &(vec![image.to_vec()], vec![label.to_vec()]),
+    );
+
+    println!("Probability Distribution: {:#?}", prediction);
+
+    Ok(())
 }
