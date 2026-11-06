@@ -79,6 +79,7 @@ pub fn new() -> (
             testing_set.0[0..slice_testing].to_vec(),
             testing_set.1[0..slice_testing].to_vec(),
         ),
+        false,
     );
     // dbg!(thing);
     ((model_cnn, dense_network), accuracy)
@@ -100,8 +101,8 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
         &mut model.model.0,
         &mut model.model.1,
         &(vec![image.clone()], vec![label.clone()]),
+        true,
     );
-
 
     println!("Probability Distribution: {:#?}", prediction);
 

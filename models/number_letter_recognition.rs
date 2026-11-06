@@ -38,9 +38,9 @@ pub fn new() -> (
     );
 
     let model_settings: ml::neural_network::ModelSettings = ml::neural_network::ModelSettings {
-        number_of_neurons_hidden_layer: vec![128],
-        number_of_hidden_layers: 1,
-        learning_rate: 0.15,
+        number_of_neurons_hidden_layer: vec![128, 64],
+        number_of_hidden_layers: 2,
+        learning_rate: 0.01,
         batch_size: 32,
         epochs: 100,
     };
@@ -72,8 +72,10 @@ pub fn new() -> (
             &cnn_model_settings.pooling_type,
         );
 
-    let slice_training: usize = 10000;
-    let slice_testing: usize = 3000;
+    //600k max
+    let slice_training: usize = 200000;
+    //100k max
+    let slice_testing: usize = 50000;
 
     let training_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
         (training_dataset.images, training_dataset.labels);
@@ -99,6 +101,7 @@ pub fn new() -> (
             testing_set.0[0..slice_testing].to_vec(),
             testing_set.1[0..slice_testing].to_vec(),
         ),
+        false,
     );
 
     ((model_cnn, dense_network), accuracy)
@@ -121,7 +124,7 @@ fn check_cache(mut dataset: &mut Dataset, path: &str, file: &str) {
     };
 }
 
-pub fn sample() -> Result<(), Box<dyn std::error::Error>>{
+pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = if let Ok(model) = save::load_model::<ml::SavedModel>(
         "models/number_letter_recognition_model_parameters/cnn_model.json",
     ) {
@@ -147,6 +150,7 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>>{
         &mut model.model.0,
         &mut model.model.1,
         &(vec![image.to_vec()], vec![label.to_vec()]),
+        true,
     );
 
     println!("Probability Distribution: {:#?}", prediction);

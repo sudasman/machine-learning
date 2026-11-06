@@ -70,6 +70,7 @@ pub fn train_and_save_cnn_model(
                         &new_saved_model,
                         "models/number_recognition_model_parameters/cnn_model.json",
                     )?;
+                    println!("Previous Accuracy: {}", saved_model.accuracy);
                     println!("Model Saved");
                 }
             } else {
@@ -1027,6 +1028,7 @@ pub mod convolutional_neural_network {
         dense_model: &mut Vec<neural_network::Layer>,
         //(image, label)
         testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
+        show: bool,
     ) -> (f64, Vec<Vec<f64>>) {
         assert!(testing_split_data.0.len() == testing_split_data.1.len());
 
@@ -1059,12 +1061,13 @@ pub mod convolutional_neural_network {
                 .map(|(i, _)| i)
                 .unwrap();
             //predicted_class == index with the highest probability
+            if probabilities.len() == 62 && show {
+                const ASCII: &[u8; 62] =
+                    b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+                println!("Guess: {}", ASCII[predicted_class] as char);
+            }
             if predicted_class == label[0] as usize {
                 //hardcoded: emnist specific
-                if probabilities.len() == 62 {
-                    const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-                    println!("Guess: {}", ASCII[predicted_class] as char);
-                }
                 correct_predictions += 1.0
             }
         }

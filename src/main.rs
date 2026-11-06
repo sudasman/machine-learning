@@ -19,6 +19,6 @@ fn main() {
 }
 
 #[cfg(not(feature = "train"))]
-fn main(){
+fn main() {
     number_letter_recognition::sample().expect("Error");
 }

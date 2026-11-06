@@ -52,9 +52,7 @@ pub fn render_labels(mut labels: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
 pub fn display_sample((labels, images): (&[Vec<f64>], &[Vec<Vec<f64>>])) {
     const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-
     let label = ASCII[labels[0][0] as usize] as char;
-    
 
     let rows = images[0].len();
     let cols = images[0].first().map_or(0, |row| row.len());

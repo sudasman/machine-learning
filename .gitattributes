@@ -1,1 +1,2 @@
 models/number_recognition_model_parameters/cnn_model.json filter=lfs diff=lfs merge=lfs -text
+models/number_letter_recognition_model_parameters/cnn_model.json filter=lfs diff=lfs merge=lfs -text
