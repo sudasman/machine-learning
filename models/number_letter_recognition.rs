@@ -43,6 +43,7 @@ pub fn new() -> (
         learning_rate: 0.01,
         batch_size: 32,
         epochs: 100,
+        optimization: ml::OptimizationAlgorithms::Adam,
     };
 
     let cnn_model_settings: convolutional_neural_network::cnn_model_settings =
@@ -73,9 +74,9 @@ pub fn new() -> (
         );
 
     //600k max
-    let slice_training: usize = 200000;
+    let slice_training: usize = 300000;
     //100k max
-    let slice_testing: usize = 50000;
+    let slice_testing: usize = 45000;
 
     let training_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
         (training_dataset.images, training_dataset.labels);

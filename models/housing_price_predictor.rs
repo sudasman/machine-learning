@@ -13,6 +13,7 @@ pub fn new() {
         learning_rate: 0.01,
         batch_size: 36,
         epochs: 10000,
+        optimization: ml::OptimizationAlgorithms::GradientDescent,
     };
 
     let number_of_datasets = 1000;

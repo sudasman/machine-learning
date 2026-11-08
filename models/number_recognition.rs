@@ -25,6 +25,7 @@ pub fn new() -> (
         learning_rate: 0.15,
         batch_size: 32,
         epochs: 100,
+        optimization: ml::OptimizationAlgorithms::GradientDescent,
     };
 
     let cnn_model_settings: convolutional_neural_network::cnn_model_settings =

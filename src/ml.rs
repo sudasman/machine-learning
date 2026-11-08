@@ -39,6 +39,12 @@ pub struct SavedModel {
     pub accuracy: f64,
 }
 
+#[derive(Debug, Clone)]
+pub enum OptimizationAlgorithms {
+    GradientDescent,
+    Adam,
+}
+
 pub fn train_and_save_dense_mode() {}
 
 pub fn train_and_save_cnn_model(
@@ -130,6 +136,11 @@ pub mod neural_network {
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
 
+    //used for Adam
+    const BETA_M: f64 = 0.9;
+    const BETA_V: f64 = 0.999;
+    const EPSILON: f64 = 1e-8;
+
     impl<T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T> for Vec<Layer> {
         fn init_model(model: T) {}
 
@@ -192,6 +203,7 @@ pub mod neural_network {
         //batch size must be less than or equal to number_of_datasets
         pub batch_size: usize,
         pub epochs: usize,
+        pub optimization: OptimizationAlgorithms,
     }
 
     pub struct Dataset {
@@ -514,6 +526,11 @@ pub mod convolutional_neural_network {
     use crate::numpy::matrix_arithmetic as array;
     use serde::*;
     use std::f64::{MAX, NEG_INFINITY};
+
+    //used for Adam
+    const BETA_M: f64 = 0.9;
+    const BETA_V: f64 = 0.999;
+    const EPSILON: f64 = 1e-8;
     impl<T: std::fmt::Debug + Clone + std::fmt::Display> MachineLearning<T>
         for Vec<ConvolutionalBlock>
     {
@@ -552,6 +569,16 @@ pub mod convolutional_neural_network {
         pooling_layer: PoolingLayer,
         kernel_gradient: Vec<Vec<Vec<Vec<f64>>>>,
         bias_gradient: Vec<f64>,
+        //1st moment -> denoted as m ( gradient_moving_average )
+        //[channel][kernel][row][col]
+        weight_m: Vec<Vec<Vec<Vec<f64>>>>,
+        //2nd moment -> denoted as v (squared-gradient_moving_average )
+        //[channel][kernel][row][col]
+        weight_v: Vec<Vec<Vec<Vec<f64>>>>,
+        //[kernel]
+        bias_m: Vec<f64>,
+        //[kernel]
+        bias_v: Vec<f64>,
     }
 
     //used for optimization
@@ -627,6 +654,26 @@ pub mod convolutional_neural_network {
                 })
                 .collect::<Vec<Vec<Vec<Vec<f64>>>>>();
 
+            let weight_m: Vec<Vec<Vec<Vec<f64>>>> =
+                vec![
+                    vec![
+                        vec![vec![0.0; kernels[0][0][0].len()]; kernels[0][0].len()];
+                        kernels[0].len()
+                    ];
+                    kernels.len()
+                ];
+            let weight_v: Vec<Vec<Vec<Vec<f64>>>> =
+                vec![
+                    vec![
+                        vec![vec![0.0; kernels[0][0][0].len()]; kernels[0][0].len()];
+                        kernels[0].len()
+                    ];
+                    kernels.len()
+                ];
+
+            let bias_m: Vec<f64> = vec![0.0; kernels.len()];
+            let bias_v: Vec<f64> = vec![0.0; kernels.len()];
+
             let bias_matrix: Vec<f64> = array::cnn_bias_matrix(kernels.len());
             let n = bias_matrix.len();
 
@@ -652,6 +699,10 @@ pub mod convolutional_neural_network {
                     *number_of_kernels
                 ],
                 bias_gradient: vec![0.0; n],
+                weight_m,
+                weight_v,
+                bias_m,
+                bias_v,
             }
         }
 
@@ -929,6 +980,7 @@ pub mod convolutional_neural_network {
         assert!(model_settings.batch_size > 0 && model_settings.batch_size <= images.len());
         let mut cost_history: Vec<f64> = Vec::new();
         let epochs: usize = model_settings.epochs;
+        let mut t = 0;
         //[image][conv_block][cache]
         for epoch in 0..epochs {
             let (shuffled_training_dataset, shuffled_labels_dataset): (
@@ -938,6 +990,7 @@ pub mod convolutional_neural_network {
             let (mut total, mut batches): (f64, usize) = (0.0, 0);
 
             for start in (0..shuffled_training_dataset.len()).step_by(model_settings.batch_size) {
+                t += 1;
                 let mut images_cache: Vec<Vec<BlockCache>> = Vec::new();
                 let mut flattened_images: Vec<Vec<f64>> = Vec::new();
                 let edge = (start + model_settings.batch_size.clone())
@@ -1008,6 +1061,11 @@ pub mod convolutional_neural_network {
                     &grad,
                     &model_settings.learning_rate,
                     &images_cache,
+                    matches!(
+                        model_settings.optimization,
+                        super::OptimizationAlgorithms::Adam
+                    ),
+                    std::num::NonZero::new(t).unwrap(),
                 );
                 batches += 1;
             }
@@ -1085,6 +1143,8 @@ pub mod convolutional_neural_network {
         mut delta: &Vec<Vec<Vec<Vec<f64>>>>,
         learning_rate: &f64,
         images_cache: &Vec<Vec<BlockCache>>,
+        adam: bool,
+        t: std::num::NonZeroUsize,
     ) {
         //conv block stores the current feature map and the previous feature map before pooling,activation function, and bias
         //convolutional_base[i].conv_layer.input is also thought of as convolutional_base[i + 1].prev_input
@@ -1095,7 +1155,11 @@ pub mod convolutional_neural_network {
             cnn_backward_pass(model_cnn, &images_cache[i], &delta[i]);
         }
 
-        cnn_update_parameters(model_cnn, learning_rate);
+        if adam {
+            cnn_update_parameters_adam(model_cnn, learning_rate, t);
+        } else {
+            cnn_update_parameters(model_cnn, learning_rate);
+        }
     }
 
     fn max_pool_backpass(
@@ -1227,6 +1291,7 @@ pub mod convolutional_neural_network {
                 for channel in 0..block.conv_layer.kernels[kernel_index].len() {
                     for row in 0..block.conv_layer.kernels[kernel_index][channel].len() {
                         for col in 0..block.conv_layer.kernels[kernel_index][channel][row].len() {
+                            //visual: kernel is a matrix and it has a corresponding gradient matrix whose entries update the respective entries in the kernel matrix
                             block.conv_layer.kernels[kernel_index][channel][row][col] -=
                                 learning_rate
                                     * block.kernel_gradient[kernel_index][channel][row][col];
@@ -1237,6 +1302,64 @@ pub mod convolutional_neural_network {
                 //kernel index corresponds to its respective bias matrix
                 block.conv_layer.bias_matrix[kernel_index] -=
                     learning_rate * block.bias_gradient[kernel_index];
+            }
+        }
+    }
+
+    fn adam_step(
+        gradient: &f64,
+        m: &mut f64,
+        v: &mut f64,
+        bias_correction_m: f64,
+        bias_correction_v: f64,
+    ) -> f64 {
+        //First moment (mean)
+        //mt = beta_1 m_(t-1) + (1 - beta_1) * partial L over partial w_t
+        *m = (BETA_M * *m) + ((1.0 - BETA_M) * gradient);
+        //Second moment (variance)
+        //vt = beta_2 v_(t-1) + (1 - beta_2) * (partial L over partial w_t)^2
+        *v = (BETA_V * *v) + ((1.0 - BETA_V) * (gradient * gradient));
+
+        //Bias Correction
+        let m_hat = *m / bias_correction_m;
+        let v_hat = *v / bias_correction_v;
+
+        m_hat / (v_hat.sqrt() + EPSILON)
+    }
+
+    fn cnn_update_parameters_adam(
+        convolutional_base: &mut Vec<ConvolutionalBlock>,
+        learning_rate: &f64,
+        t: std::num::NonZeroUsize,
+    ) {
+        let bias_correction_m: f64 = 1.0 - BETA_M.powi(t.get() as i32);
+        let bias_correction_v: f64 = 1.0 - BETA_V.powi(t.get() as i32);
+
+        for block in convolutional_base.iter_mut() {
+            for kernel_index in 0..block.conv_layer.kernels.len() {
+                for channel in 0..block.conv_layer.kernels[kernel_index].len() {
+                    for row in 0..block.conv_layer.kernels[kernel_index][channel].len() {
+                        for col in 0..block.conv_layer.kernels[kernel_index][channel][row].len() {
+                            block.conv_layer.kernels[kernel_index][channel][row][col] -=
+                                learning_rate
+                                    * adam_step(
+                                        &block.kernel_gradient[kernel_index][channel][row][col],
+                                        &mut block.weight_m[kernel_index][channel][row][col],
+                                        &mut block.weight_v[kernel_index][channel][row][col],
+                                        bias_correction_m,
+                                        bias_correction_v,
+                                    );
+                        }
+                    }
+                }
+                block.conv_layer.bias_matrix[kernel_index] -= learning_rate
+                    * adam_step(
+                        &block.bias_gradient[kernel_index],
+                        &mut block.bias_m[kernel_index],
+                        &mut block.bias_v[kernel_index],
+                        bias_correction_m,
+                        bias_correction_v,
+                    );
             }
         }
     }
