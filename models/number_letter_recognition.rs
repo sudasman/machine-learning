@@ -127,7 +127,7 @@ fn check_cache(mut dataset: &mut Dataset, path: &str, file: &str) {
 
 pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = if let Ok(model) = save::load_model::<ml::SavedModel>(
-        "models/number_letter_recognition_model_parameters/cnn_model.json",
+        "/Users/eason/Desktop/rust/machine-learning/models/number_letter_recognition_model_parameters/cnn_model.json",
     ) {
         model
     } else {
@@ -137,8 +137,8 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
 
     check_cache(
         &mut dataset,
-        "datasets/emnist/cache/emnist_testing.bin",
-        "datasets/emnist/emnist-byclass-test.csv",
+        "/Users/eason/Desktop/rust/machine-learning/datasets/emnist/cache/emnist_testing.bin",
+        "/Users/eason/Desktop/rust/machine-learning/datasets/emnist/emnist-byclass-test.csv",
     );
 
     let slice = 1000;
@@ -158,3 +158,6 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+//same functionality as sample but with a custom image
+pub fn process_image(){}
