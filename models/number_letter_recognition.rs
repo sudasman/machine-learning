@@ -41,7 +41,7 @@ pub fn new() -> (
         number_of_neurons_hidden_layer: vec![128, 64],
         number_of_hidden_layers: 2,
         learning_rate: 0.01,
-        batch_size: 32,
+        batch_size: 256,
         epochs: 100,
         optimization: ml::OptimizationAlgorithms::Adam,
     };
@@ -95,7 +95,7 @@ pub fn new() -> (
             &ml::AvailableDatasets::NumbersLetters,
         );
 
-    let (accuracy, _): (f64, Vec<Vec<f64>>) = convolutional_neural_network::test_model(
+    let (accuracy, _, _): (f64, Vec<Vec<f64>>, char) = convolutional_neural_network::test_model(
         &mut model_cnn,
         &mut dense_network,
         &(
@@ -125,7 +125,7 @@ fn check_cache(mut dataset: &mut Dataset, path: &str, file: &str) {
     };
 }
 
-pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
+pub fn sample() -> Result<(Vec<String>, char), Box<dyn std::error::Error>> {
     let mut model = if let Ok(model) = save::load_model::<ml::SavedModel>(
         "/Users/eason/Desktop/rust/machine-learning/models/number_letter_recognition_model_parameters/cnn_model.json",
     ) {
@@ -145,9 +145,9 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
     let (label, image): (&[f64], &[Vec<f64>]) =
         emnist::grab_random_image(&dataset.images[..slice], &dataset.labels[..slice]);
 
-    emnist::display_sample((&vec![label.to_vec()], &vec![image.to_vec()]));
+    let temp = emnist::display_sample((&vec![label.to_vec()], &vec![image.to_vec()]));
 
-    let (_, prediction) = convolutional_neural_network::test_model(
+    let (_, prediction, guess) = convolutional_neural_network::test_model(
         &mut model.model.0,
         &mut model.model.1,
         &(vec![image.to_vec()], vec![label.to_vec()]),
@@ -156,8 +156,9 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Probability Distribution: {:#?}", prediction);
 
-    Ok(())
+    //used for display for the web
+    Ok((temp, guess))
 }
 
 //same functionality as sample but with a custom image
-pub fn process_image(){}
+pub fn process_image() {}

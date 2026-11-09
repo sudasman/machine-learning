@@ -72,7 +72,7 @@ pub fn new() -> (
             &ml::AvailableDatasets::Numbers,
         );
 
-    let (accuracy, _): (f64, Vec<Vec<f64>>) = convolutional_neural_network::test_model(
+    let (accuracy, _, _): (f64, Vec<Vec<f64>>, char) = convolutional_neural_network::test_model(
         //fix the clones, it increases runtime duration
         &mut model_cnn,
         &mut dense_network,
@@ -98,7 +98,7 @@ pub fn sample() -> Result<(), Box<dyn std::error::Error>> {
     let (image, label) = number_dataset::grab_random_image();
 
     number_dataset::show_sample_image(&vec![image.clone()], &vec![label.clone()], 0, None);
-    let (_, prediction) = convolutional_neural_network::test_model(
+    let (_, prediction, _) = convolutional_neural_network::test_model(
         &mut model.model.0,
         &mut model.model.1,
         &(vec![image.clone()], vec![label.clone()]),

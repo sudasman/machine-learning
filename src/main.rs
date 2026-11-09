@@ -4,7 +4,7 @@ use machine_learning::number_recognition;
 mod save;
 
 //cargo run --release --features train
-//caffeinate -i cargo run --release
+//caffeinate -i cargo run --release --features train
 #[cfg(feature = "train")]
 fn main() {
     //train and save the model if better performance (experimental)

@@ -1087,9 +1087,10 @@ pub mod convolutional_neural_network {
         //(image, label)
         testing_split_data: &(Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>),
         show: bool,
-    ) -> (f64, Vec<Vec<f64>>) {
+    ) -> (f64, Vec<Vec<f64>>, char) {
         assert!(testing_split_data.0.len() == testing_split_data.1.len());
-
+        const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        let mut temp: usize = 0;
         let mut flattened_images: Vec<Vec<f64>> = Vec::new();
 
         for testing_image in &testing_split_data.0 {
@@ -1120,9 +1121,8 @@ pub mod convolutional_neural_network {
                 .unwrap();
             //predicted_class == index with the highest probability
             if probabilities.len() == 62 && show {
-                const ASCII: &[u8; 62] =
-                    b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
                 println!("Guess: {}", ASCII[predicted_class] as char);
+                temp = predicted_class;
             }
             if predicted_class == label[0] as usize {
                 //hardcoded: emnist specific
@@ -1134,7 +1134,7 @@ pub mod convolutional_neural_network {
 
         println!("Accuracy: {}%", accuracy * 100.0);
 
-        (accuracy, prediction)
+        (accuracy, prediction, ASCII[temp] as char)
     }
 
     pub fn gradient_descent_cnn(
