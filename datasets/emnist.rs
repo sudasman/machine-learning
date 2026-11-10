@@ -49,7 +49,7 @@ pub fn render_labels(mut labels: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     labels
 }
 
-pub fn display_sample((labels, images): (&[Vec<f64>], &[Vec<Vec<f64>>])) -> Vec<String> {
+pub fn display_sample((labels, images): (&[Vec<f64>], &[Vec<Vec<f64>>])) -> (Vec<String>, char) {
     const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     let mut temp = Vec::new();
     let label = ASCII[labels[0][0] as usize] as char;
@@ -67,7 +67,7 @@ pub fn display_sample((labels, images): (&[Vec<f64>], &[Vec<Vec<f64>>])) -> Vec<
     }
 
     println!("Label: {}", label);
-    temp
+    (temp, label)
 }
 
 pub fn grab_random_image<'a>(

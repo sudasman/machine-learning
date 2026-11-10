@@ -145,7 +145,8 @@ pub fn sample() -> Result<(Vec<String>, char), Box<dyn std::error::Error>> {
     let (label, image): (&[f64], &[Vec<f64>]) =
         emnist::grab_random_image(&dataset.images[..slice], &dataset.labels[..slice]);
 
-    let temp = emnist::display_sample((&vec![label.to_vec()], &vec![image.to_vec()]));
+    let temp: (Vec<String>, char) =
+        emnist::display_sample((&vec![label.to_vec()], &vec![image.to_vec()]));
 
     let (_, prediction, guess) = convolutional_neural_network::test_model(
         &mut model.model.0,
@@ -157,8 +158,22 @@ pub fn sample() -> Result<(Vec<String>, char), Box<dyn std::error::Error>> {
     println!("Probability Distribution: {:#?}", prediction);
 
     //used for display for the web
-    Ok((temp, guess))
+    Ok((temp.0, temp.1))
 }
 
 //same functionality as sample but with a custom image
-pub fn process_image() {}
+pub fn process_image(image: &[Vec<f64>]) -> char {
+    let mut model = if let Ok(model) = save::load_model::<ml::SavedModel>(
+        "/Users/eason/Desktop/rust/machine-learning/models/number_letter_recognition_model_parameters/cnn_model.json",
+    ) {
+        model
+    } else {
+        panic!("No model saved to sample");
+    };
+
+    convolutional_neural_network::test_model_web(
+        &mut model.model.0,
+        &mut model.model.1,
+        &(vec![image.to_vec()]),
+    )
+}

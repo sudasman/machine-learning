@@ -1137,6 +1137,39 @@ pub mod convolutional_neural_network {
         (accuracy, prediction, ASCII[temp] as char)
     }
 
+    //used for the web app
+    //predicts image with no label
+    pub fn test_model_web(
+        cnn_model: &mut Vec<ConvolutionalBlock>,
+        dense_model: &mut Vec<neural_network::Layer>,
+        //(image, label)
+        image: &[Vec<Vec<f64>>],
+    ) -> char {
+        const ASCII: &[u8; 62] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+        let (cnn_output, _): (Vec<Vec<Vec<f64>>>, Vec<BlockCache>) = cnn_forward_pass(
+            cnn_model,
+            &vec![image[0].clone()],
+            //make this dynamic
+            &ActivationFunctionCnn::ReLu,
+        );
+
+        let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
+            dense_model,
+            &vec![flatten(&cnn_output)],
+            &neural_network::ActivationFunction::Softmax,
+        );
+
+        let predicted_index = prediction[0]
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.total_cmp(b.1))
+            .unwrap()
+            .0;
+
+        ASCII[predicted_index] as char
+    }
+
     pub fn gradient_descent_cnn(
         model_cnn: &mut Vec<ConvolutionalBlock>,
         //[sample][channel][row][col]
