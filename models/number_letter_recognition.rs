@@ -1,6 +1,7 @@
 use crate::emnist;
 use crate::ml::{self, convolutional_neural_network};
 use crate::save;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Dataset {
     labels: Vec<Vec<f64>>,
@@ -63,6 +64,7 @@ pub fn new() -> (
     let mut model_cnn: Vec<convolutional_neural_network::ConvolutionalBlock> =
         convolutional_neural_network::init_cnn(
             &Vec::new(),
+            &1,
             &cnn_model_settings.number_of_conv_blocks,
             &cnn_model_settings.number_of_kernels,
             &cnn_model_settings.kernel_size,
@@ -74,9 +76,9 @@ pub fn new() -> (
         );
 
     //600k max
-    let slice_training: usize = 300000;
+    let slice_training: usize = 500000;
     //100k max
-    let slice_testing: usize = 38000;
+    let slice_testing: usize = 75000;
 
     let training_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
         (training_dataset.images, training_dataset.labels);

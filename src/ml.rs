@@ -521,7 +521,6 @@ pub mod neural_network {
 
 pub mod convolutional_neural_network {
     use super::*;
-    use crate::housing_price_dataset::generate_training_dataset;
     use crate::numpy::functions as function;
     use crate::numpy::matrix_arithmetic as array;
     use serde::*;
@@ -629,9 +628,7 @@ pub mod convolutional_neural_network {
 
     //intialize the layers, backpropgation will use the vec storing Convblocks with &mut
     //note: padding not implemented
-    //neither is a fully rgb input
-    //idea for rgb -> use tuple to represent rgb where every pixel is a 3 tuple
-    //Vec<Vec<Vec<(f64, f64, f64)>>>
+
     impl ConvolutionalBlock {
         fn new(
             input: &Vec<Vec<Vec<f64>>>,
@@ -885,7 +882,8 @@ pub mod convolutional_neural_network {
     }
 
     pub fn init_cnn(
-        images: &Vec<Vec<Vec<f64>>>,
+        initial_input: &Vec<Vec<Vec<f64>>>,
+        input_channels: &usize,
         number_of_conv_blocks: &usize,
         number_of_kernels: &Vec<usize>,
         kernel_size: &Vec<usize>,
@@ -898,18 +896,16 @@ pub mod convolutional_neural_network {
         assert!(*number_of_conv_blocks >= 1);
         //the indices of kernel_size and kernel_stride represent their respective kernel sizes and strides at that convolutional block
         let mut convolutional_base: Vec<ConvolutionalBlock> = Vec::new();
-        //base, the next convolutional blocks will have different inputs
         convolutional_base.push(ConvolutionalBlock::new(
-            &images,
+            initial_input,
             &number_of_kernels[0],
             //greyscale: 1 | RGB: 3
-            //hardcoded for now, will make it dynamic later
-            &1,
+            input_channels,
             &kernel_size[0],
             &kernel_stride[0],
-            &activation_type,
-            &pooling_stride,
-            &pooling_window,
+            activation_type,
+            pooling_stride,
+            pooling_window,
             &pooling_type,
         ));
         let mut input_channels = number_of_kernels[0];
@@ -1136,6 +1132,133 @@ pub mod convolutional_neural_network {
         println!("Accuracy: {}%", accuracy * 100.0);
 
         (accuracy, prediction, ASCII[temp] as char)
+    }
+
+    pub fn train_model_cnn_rgb(
+        images: &Vec<Vec<Vec<Vec<f64>>>>,
+        labels: &Vec<Vec<f64>>,
+        cnn_model: &mut Vec<ConvolutionalBlock>,
+        mut dense_model: Option<Vec<neural_network::Layer>>,
+        model_settings: &neural_network::ModelSettings,
+        activation_function: &neural_network::ActivationFunction,
+        loss_function: &Option<LossFunctionCnn>,
+        dataset_type: &AvailableDatasets,
+        // (early_stopping, negligibility): (bool, f64),
+    ) -> (Vec<f64>, Vec<neural_network::Layer>) {
+        assert!(model_settings.batch_size > 0 && model_settings.batch_size <= images.len());
+        let mut cost_history: Vec<f64> = Vec::new();
+        let epochs: usize = model_settings.epochs;
+        let mut t = 0;
+        //[image][conv_block][cache]
+        for epoch in 0..epochs {
+            let (shuffled_training_dataset, shuffled_labels_dataset): (
+                Vec<Vec<Vec<Vec<f64>>>>,
+                Vec<Vec<f64>>,
+            ) = function::shuffle_dataset_tensor_4d(images, labels);
+            let (mut total, mut batches): (f64, usize) = (0.0, 0);
+
+            for start in (0..shuffled_training_dataset.len()).step_by(model_settings.batch_size) {
+                t += 1;
+                let mut images_cache: Vec<Vec<BlockCache>> = Vec::new();
+                let mut flattened_images: Vec<Vec<f64>> = Vec::new();
+                let edge = (start + model_settings.batch_size.clone())
+                    .min(shuffled_training_dataset.len());
+
+                let training_batch = shuffled_training_dataset[start..edge].to_vec();
+                let label_batch = shuffled_labels_dataset[start..edge].to_vec();
+
+                let mut output_dim: Vec<(usize, usize, usize)> = Vec::new();
+                for image in &training_batch {
+                    //passed in as [channel][row][col], where channel == 3 (new)
+                    let (cnn_output, cache): (Vec<Vec<Vec<f64>>>, Vec<BlockCache>) =
+                        cnn_forward_pass(
+                            cnn_model,
+                            &image,
+                            //make this dynamic
+                            &ActivationFunctionCnn::ReLu,
+                        );
+                    images_cache.push(cache);
+                    //output_dim coult be rewritten better
+                    //for example maybe vec![(cnn_output.len(), cnn_output[0].len(), cnn_output[0][0].len()); training_batch.len()]
+                    output_dim.push((
+                        cnn_output.len(),
+                        cnn_output[0].len(),
+                        cnn_output[0][0].len(),
+                    ));
+                    //flatten -> Vec<f64>
+                    flattened_images.push(flatten(&cnn_output));
+                }
+
+                //please future me fix this init_input_layer function, its so horrid (forward pass overwrites whatever you input into it)
+                //if statement prevents the dense layer being reinitialized every batch
+                if dense_model.is_none() {
+                    dense_model = Some(neural_network::init_model(
+                        &model_settings.number_of_neurons_hidden_layer,
+                        neural_network::init_input_layer(&vec![
+                            vec![0.0; flattened_images[0].len()];
+                            flattened_images.len()
+                        ]),
+                        &model_settings.number_of_hidden_layers,
+                        dataset_type,
+                    ));
+                }
+
+                //need to initialze model.1 with output_dim
+                let prediction: Vec<Vec<f64>> = neural_network::forward_pass(
+                    dense_model.as_mut().unwrap(),
+                    &flattened_images,
+                    activation_function,
+                );
+
+                total +=
+                    function::use_loss_function((&prediction, &label_batch), &None, &loss_function);
+
+                let delta = softmax_cross_entropy_grad(&prediction, &label_batch);
+
+                let extract_delta: Vec<Vec<f64>> = neural_network::backward_pass(
+                    dense_model.as_mut().unwrap(),
+                    delta,
+                    model_settings.learning_rate.clone(),
+                );
+
+                //input_gradient from the dense layer
+                let grad: Vec<Vec<Vec<Vec<f64>>>> = unflatten(&extract_delta, &output_dim);
+
+                gradient_descent_cnn(
+                    cnn_model,
+                    &grad,
+                    &model_settings.learning_rate,
+                    &images_cache,
+                    matches!(
+                        model_settings.optimization,
+                        super::OptimizationAlgorithms::Adam
+                    ),
+                    std::num::NonZero::new(t).unwrap(),
+                );
+                batches += 1;
+            }
+            let avg: f64 = total / batches as f64;
+            cost_history.push(avg);
+
+            // if epoch % 100 == 0 {
+            //     println!("Epoch {} Cost: {}", epoch, avg);
+            // }
+
+            println!("Epoch {} Cost: {}", epoch + 1, avg);
+        }
+        (cost_history, dense_model.unwrap())
+    }
+
+    //need to prepare labels first
+    pub fn test_model_cancer(
+        cnn_model: &mut Vec<ConvolutionalBlock>,
+        dense_model: &mut Vec<neural_network::Layer>,
+        //(image, label)
+        testing_split_data: &(Vec<Vec<Vec<Vec<f64>>>>, Vec<Vec<f64>>),
+        show: bool,
+    ) -> (f64, Vec<Vec<f64>>, String) {
+        //return accuracy, probability distribution, guess{
+        unimplemented!();
     }
 
     //used for the web app
@@ -1397,8 +1520,6 @@ pub mod convolutional_neural_network {
             }
         }
     }
-
-    fn cnn_gradient_check() {}
 
     pub fn softmax_cross_entropy_grad(
         predictions: &Vec<Vec<f64>>,

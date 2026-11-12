@@ -20,4 +20,6 @@ fn main() {
 }
 
 #[cfg(not(feature = "train"))]
-fn main() {}
+fn main() {
+    cancer_recognition::new();
+}

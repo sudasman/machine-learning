@@ -45,6 +45,7 @@ pub fn new() -> (
     let mut model_cnn: Vec<convolutional_neural_network::ConvolutionalBlock> =
         convolutional_neural_network::init_cnn(
             &Vec::new(),
+            &1,
             &cnn_model_settings.number_of_conv_blocks,
             &cnn_model_settings.number_of_kernels,
             &cnn_model_settings.kernel_size,

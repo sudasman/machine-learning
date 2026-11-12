@@ -306,4 +306,20 @@ pub mod functions {
 
         (shuffled_training_dataset, shuffled_labels_dataset)
     }
+
+    pub fn shuffle_dataset_tensor_4d(
+        images: &Vec<Vec<Vec<Vec<f64>>>>,
+        labels: &Vec<Vec<f64>>,
+    ) -> (Vec<Vec<Vec<Vec<f64>>>>, Vec<Vec<f64>>) {
+        assert_eq!(images.len(), labels.len());
+
+        let mut indices: Vec<usize> = (0..images.len()).collect();
+        indices.shuffle(&mut rand::rng());
+
+        let shuffled_images = indices.iter().map(|&i| images[i].clone()).collect();
+
+        let shuffled_labels = indices.iter().map(|&i| labels[i].clone()).collect();
+
+        (shuffled_images, shuffled_labels)
+    }
 }
