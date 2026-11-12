@@ -1,3 +1,7 @@
+#[path = "../datasets/cancer.rs"]
+pub mod cancer;
+#[path = "../models/cancer_recognition.rs"]
+pub mod cancer_recognition;
 #[path = "../datasets/emnist.rs"]
 mod emnist;
 #[path = "../datasets/housing_price_dataset.rs"]

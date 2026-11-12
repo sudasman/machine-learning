@@ -631,6 +631,7 @@ pub mod convolutional_neural_network {
     //note: padding not implemented
     //neither is a fully rgb input
     //idea for rgb -> use tuple to represent rgb where every pixel is a 3 tuple
+    //Vec<Vec<Vec<(f64, f64, f64)>>>
     impl ConvolutionalBlock {
         fn new(
             input: &Vec<Vec<Vec<f64>>>,

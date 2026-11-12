@@ -1,3 +1,4 @@
+use machine_learning::cancer_recognition;
 use machine_learning::housing_price_predictor;
 use machine_learning::number_letter_recognition;
 use machine_learning::number_recognition;
@@ -19,6 +20,4 @@ fn main() {
 }
 
 #[cfg(not(feature = "train"))]
-fn main() {
-    number_letter_recognition::sample().expect("Error");
-}
+fn main() {}

@@ -41,7 +41,7 @@ pub fn new() -> (
         number_of_neurons_hidden_layer: vec![128, 64],
         number_of_hidden_layers: 2,
         learning_rate: 0.01,
-        batch_size: 256,
+        batch_size: 32,
         epochs: 100,
         optimization: ml::OptimizationAlgorithms::Adam,
     };
@@ -76,7 +76,7 @@ pub fn new() -> (
     //600k max
     let slice_training: usize = 300000;
     //100k max
-    let slice_testing: usize = 45000;
+    let slice_testing: usize = 38000;
 
     let training_set: (Vec<Vec<Vec<f64>>>, Vec<Vec<f64>>) =
         (training_dataset.images, training_dataset.labels);
