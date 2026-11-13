@@ -1254,10 +1254,11 @@ pub mod convolutional_neural_network {
         cnn_model: &mut Vec<ConvolutionalBlock>,
         dense_model: &mut Vec<neural_network::Layer>,
         //(image, label)
-        testing_split_data: &(Vec<Vec<Vec<Vec<f64>>>>, Vec<Vec<f64>>),
+        testing_split_data: &(Vec<Vec<Vec<Vec<f64>>>>, (Vec<Vec<f64>>, Vec<Vec<f64>>)),
         show: bool,
-    ) -> (f64, Vec<Vec<f64>>, String) {
+    ) -> (f64, Vec<Vec<f64>>, (String, String)) {
         //return accuracy, probability distribution, guess{
+
         unimplemented!();
     }
 
