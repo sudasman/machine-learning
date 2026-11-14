@@ -1,5 +1,7 @@
 #[path = "../datasets/cancer.rs"]
 pub mod cancer;
+#[path = "../datasets/cancer_data_structure.rs"]
+pub mod cancer_data_structure;
 #[path = "../models/cancer_recognition.rs"]
 pub mod cancer_recognition;
 #[path = "../datasets/emnist.rs"]

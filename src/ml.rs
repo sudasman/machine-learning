@@ -1154,6 +1154,7 @@ pub mod convolutional_neural_network {
             let (shuffled_training_dataset, shuffled_labels_dataset): (
                 Vec<Vec<Vec<Vec<f64>>>>,
                 Vec<Vec<f64>>,
+                //for the cancer dataset, would work for individual structs
             ) = function::shuffle_dataset_tensor_4d(images, labels);
             let (mut total, mut batches): (f64, usize) = (0.0, 0);
 

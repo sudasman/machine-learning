@@ -1,4 +1,4 @@
-use crate::cancer_recognition::{Class, Subclass};
+use crate::cancer_data_structure::{Class, Subclasses};
 use image::imageops::FilterType;
 //will be in rgb
 //channel corresponds to the rgb if channel == 1 then its grey scale
@@ -56,7 +56,7 @@ pub fn load_dataset(
 pub fn generate_labels(
     slice: &usize,
     class: Class,
-    subclass: Subclass,
+    subclass: Subclasses,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
     (
         match class {
@@ -71,40 +71,40 @@ pub fn generate_labels(
             Class::OralCancer => vec![vec![8.0]; *slice],
         },
         match subclass {
-            Subclass::AcuteLymphoblasticLeukemiaBenign => vec![vec![0.0]; *slice],
-            Subclass::AcuteLymphoblasticLeukemiaEarly => vec![vec![1.0]; *slice],
-            Subclass::AcuteLymphoblasticLeukemiaPre => vec![vec![2.0]; *slice],
-            Subclass::AcuteLymphoblasticLeukemiaPro => vec![vec![3.0]; *slice],
+            Subclasses::AcuteLymphoblasticLeukemiaBenign => vec![vec![0.0]; *slice],
+            Subclasses::AcuteLymphoblasticLeukemiaEarly => vec![vec![1.0]; *slice],
+            Subclasses::AcuteLymphoblasticLeukemiaPre => vec![vec![2.0]; *slice],
+            Subclasses::AcuteLymphoblasticLeukemiaPro => vec![vec![3.0]; *slice],
 
-            Subclass::BrainGlioma => vec![vec![4.0]; *slice],
-            Subclass::BrainMeningioma => vec![vec![5.0]; *slice],
-            Subclass::BrainTumor => vec![vec![6.0]; *slice],
+            Subclasses::BrainGlioma => vec![vec![4.0]; *slice],
+            Subclasses::BrainMeningioma => vec![vec![5.0]; *slice],
+            Subclasses::BrainTumor => vec![vec![6.0]; *slice],
 
-            Subclass::BreastBenign => vec![vec![7.0]; *slice],
-            Subclass::BreastMalignant => vec![vec![8.0]; *slice],
+            Subclasses::BreastBenign => vec![vec![7.0]; *slice],
+            Subclasses::BreastMalignant => vec![vec![8.0]; *slice],
 
-            Subclass::CervicalDyskeratotic => vec![vec![9.0]; *slice],
-            Subclass::CervicalKoilocytotic => vec![vec![10.0]; *slice],
-            Subclass::CervicalMetaplastic => vec![vec![11.0]; *slice],
-            Subclass::CervicalParabasal => vec![vec![12.0]; *slice],
-            Subclass::CervicalSuperficialIntermediate => vec![vec![13.0]; *slice],
+            Subclasses::CervicalDyskeratotic => vec![vec![9.0]; *slice],
+            Subclasses::CervicalKoilocytotic => vec![vec![10.0]; *slice],
+            Subclasses::CervicalMetaplastic => vec![vec![11.0]; *slice],
+            Subclasses::CervicalParabasal => vec![vec![12.0]; *slice],
+            Subclasses::CervicalSuperficialIntermediate => vec![vec![13.0]; *slice],
 
-            Subclass::KidneyNormal => vec![vec![14.0]; *slice],
-            Subclass::KidneyTumor => vec![vec![15.0]; *slice],
+            Subclasses::KidneyNormal => vec![vec![14.0]; *slice],
+            Subclasses::KidneyTumor => vec![vec![15.0]; *slice],
 
-            Subclass::LungAdenocarcinoma => vec![vec![16.0]; *slice],
-            Subclass::LungBenign => vec![vec![17.0]; *slice],
-            Subclass::LungSquamousCellCarcinoma => vec![vec![18.0]; *slice],
+            Subclasses::LungAdenocarcinoma => vec![vec![16.0]; *slice],
+            Subclasses::LungBenign => vec![vec![17.0]; *slice],
+            Subclasses::LungSquamousCellCarcinoma => vec![vec![18.0]; *slice],
 
-            Subclass::ColonAdenocarcinoma => vec![vec![19.0]; *slice],
-            Subclass::ColonBenign => vec![vec![20.0]; *slice],
+            Subclasses::ColonAdenocarcinoma => vec![vec![19.0]; *slice],
+            Subclasses::ColonBenign => vec![vec![20.0]; *slice],
 
-            Subclass::LymphomaChronicLymphocyticLeukemia => vec![vec![21.0]; *slice],
-            Subclass::LymphomaFollicularLymphoma => vec![vec![22.0]; *slice],
-            Subclass::LymphomaMantleCellLymphoma => vec![vec![23.0]; *slice],
+            Subclasses::LymphomaChronicLymphocyticLeukemia => vec![vec![21.0]; *slice],
+            Subclasses::LymphomaFollicularLymphoma => vec![vec![22.0]; *slice],
+            Subclasses::LymphomaMantleCellLymphoma => vec![vec![23.0]; *slice],
 
-            Subclass::OralNormal => vec![vec![24.0]; *slice],
-            Subclass::OralOralSquamousCellCarcinoma => vec![vec![25.0]; *slice],
+            Subclasses::OralNormal => vec![vec![24.0]; *slice],
+            Subclasses::OralOralSquamousCellCarcinoma => vec![vec![25.0]; *slice],
         },
     )
 }
